@@ -19,7 +19,8 @@ a later phase. See "Not yet built" below.
                       |
                       v
              workflows/chat_entry.json
-        normalizes to {tenant_id, customer_id, text}
+   normalizes to {tenant_id, channel, session_id,
+                  customer_id, text}
                       |
         +-------------+--------------+
         |                            |
@@ -95,6 +96,31 @@ editing this file in a reviewed commit.
    small contract with named inputs and outputs, and all state lives in
    Postgres, not in n8n's memory.
 
+8. **Every front door is a thin adapter over one webhook contract.**
+   The chat entry point is a plain webhook that takes our normalized
+   message: `{tenant_id, channel, session_id, customer_id, text}`. All
+   conversation state lives in Postgres (conversations, messages, the
+   booking state machine's scratchpad), never in a chat trigger's session
+   memory. So a door does only two things: stamp the tenant and session on
+   each message, and render the replies. Doors can be added, swapped, or
+   run side by side without touching the engine. See "Front doors" below.
+
+## Front doors
+
+A door is whatever the customer actually types into. Three are planned:
+
+- **Telegram** (first door, runtime phase): a bot per business, or one bot
+  stamping the tenant from its configuration. Needs the owner's bot token.
+- **Website, quick demo door:** n8n's official `@n8n/chat` widget pointed
+  at the chat entry webhook. Basic styling, our contract underneath. Good
+  enough to show a prospect a working assistant on a real website in
+  minutes.
+- **Website, standard client door:** a small custom chat widget we build
+  per client, in their branding, with quick-reply buttons and booking
+  cards. It posts to the same webhook contract as every other door, so the
+  upgrade from the demo door changes nothing behind it. Not built in this
+  phase, by design: the contract and the state model already assume it.
+
 ## Repo layout
 
 ```
@@ -118,9 +144,12 @@ tests/conversations.md      scripted conversations with pass criteria
 3. Add the tenant row in Postgres with the same slug as the pack file name.
    That slug is the `tenant_id` used everywhere.
 4. Generate the prompt: `python3 prompts/build_prompt.py packs/<business>.json`
-5. Import the workflows once (they are shared across tenants). The tenant's
-   channel (Telegram first) is pointed at the chat entry workflow with the
-   tenant's slug attached to every incoming message.
+5. Import the workflows once (they are shared across tenants). Point the
+   tenant's door at the chat entry webhook: the door stamps every incoming
+   message with the tenant's slug, the channel, and a session id, in the
+   normalized contract `{tenant_id, channel, session_id, customer_id,
+   text}`. For a website, start with the `@n8n/chat` demo door; the custom
+   client widget is a later, per-client build.
 6. Run through `tests/conversations.md` against the new pack before calls
    it live. A pack does not go live on a workflow change alone.
 
@@ -129,9 +158,13 @@ tests/conversations.md      scripted conversations with pass criteria
 - **Runtime placement.** Where the isolated n8n instance and Postgres live.
   Deliberately untouched in this phase: no server changes, no new services.
 - **Telegram door.** The bot attaches to `workflows/chat_entry.json`. Needs
-  a bot token from the owner. The workflow itself is channel-agnostic: it
-  takes a normalized message, so WhatsApp or a website chat can be attached
-  later without touching the engine.
+  a bot token from the owner.
+- **Website doors.** The demo door is just configuration (the `@n8n/chat`
+  widget against the entry webhook). The standard client door, a small
+  custom widget per client with their branding, quick-reply buttons, and
+  booking cards, is designed for but not built. Both post to the same
+  normalized contract, and the engine holds all conversation state in
+  Postgres, so neither door needs the other's code.
 - **Vertex AI wiring.** The AI agent's model (Gemini via Vertex AI) plugs
   into clearly labelled placeholder nodes in the workflows. No credentials
   exist in this repo and none should ever be committed.

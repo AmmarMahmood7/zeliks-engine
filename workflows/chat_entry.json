@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Chat entry\n\nOne entry point for every channel. The channel door (Telegram first) normalizes each incoming message to `{tenant_id, customer_id, channel, text}` and posts it here. tenant_id comes from the door's configuration, never from anything the customer typed.\n\nThe agent on this page is free for questions and qualification only. Booking is handed to the Booking State Machine workflow. Tool stubs on this page define the contracts the agent may call; a tool exists for a tenant only if the tenant's pack switches it on.\n\nAfter import: connect the Postgres credential on every Postgres node.",
+        "content": "## Chat entry\n\nOne entry point for every channel: a plain webhook taking our normalized\nmessage contract, `{tenant_id, channel, session_id, customer_id, text}`.\ntenant_id comes from the door's configuration, never from anything the\ncustomer typed. All conversation state lives in Postgres (conversations,\nmessages, booking scratchpad), never in a chat trigger's session memory,\nso every door is a thin adapter: stamp tenant + session, render replies.\n\nWebsite doors:\n1. Quick demo door: n8n's official @n8n/chat widget pointed at this\n   webhook. Basic styling, same contract underneath.\n2. Standard client door: a small custom widget built per client (their\n   branding, quick-reply buttons, booking cards) posting to this same\n   webhook. Designed for here; not built in this phase.\n\nThe agent on this page is free for questions and qualification only.\nBooking is handed to the Booking State Machine workflow. Tool stubs on\nthis page define the contracts the agent may call; a tool exists for a\ntenant only if the tenant's pack switches it on.\n\nAfter import: connect the Postgres credential on every Postgres node.",
         "height": 520,
         "width": 620,
         "color": 4
@@ -47,6 +47,12 @@
               "id": "8d3b255c-5e64-4294-b5e5-520a2207d2ae",
               "name": "customer_id",
               "value": "={{ $json.body.customer_id }}",
+              "type": "string"
+            },
+            {
+              "id": "b3f84346-ac09-4929-84ce-a99b4a93beb6",
+              "name": "session_id",
+              "value": "={{ $json.body.session_id }}",
               "type": "string"
             },
             {
