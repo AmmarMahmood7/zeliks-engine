@@ -1,0 +1,577 @@
+{
+  "name": "Zeliks Engine - Booking State Machine",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Booking state machine\n\nStates: collect -> check_availability -> confirm -> write_booking.\nThe current state and the details collected so far live in conversations.booking_state (jsonb), so a booking can pause mid-way and resume on the customer's next message.\n\nRules that never bend: no slot is offered before the availability query runs; nothing is written before the customer explicitly confirms the exact service, day, and time; the write is idempotent (see db/notes.md). This workflow returns reply text to the caller; the channel door sends it.",
+        "height": 480,
+        "width": 620,
+        "color": 4
+      },
+      "id": "62a1b545-eb5e-4df6-a1a7-fe40a390eb91",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "63fd209d-eb27-47ec-a942-41540bcc4990",
+      "name": "Called by Chat Entry",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3adbc3dc-ea93-4f9f-9983-ee92a9893021",
+              "name": "state",
+              "value": "={{ $json.booking_state?.state || 'collect' }}",
+              "type": "string"
+            },
+            {
+              "id": "3f8a65b8-901d-4549-91fa-dda4dce1ef94",
+              "name": "tenant_id",
+              "value": "={{ $json.tenant_id }}",
+              "type": "string"
+            },
+            {
+              "id": "86bc2be2-a78f-467a-9053-682712091099",
+              "name": "customer_id",
+              "value": "={{ $json.customer_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b87627e3-4c52-4780-b42a-102fe1a7b5b6",
+      "name": "Read State",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "id": "b8a3d713-9b3d-4bbc-a789-eb3276d46bd3",
+                    "leftValue": "={{ $json.state }}",
+                    "rightValue": "collect",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "collect"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose"
+                },
+                "conditions": [
+                  {
+                    "id": "be425a24-e0f1-42a5-b187-fca71e7976c1",
+                    "leftValue": "={{ $json.state }}",
+                    "rightValue": "confirm",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "confirm"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "none"
+        }
+      },
+      "id": "e403dc92-543f-4226-9e2f-2e09ab2dcece",
+      "name": "Route by State",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Deterministic. Required before a booking can be checked:\n// service_id, date, time, name, phone. Reads the collected fields\n// from conversations.booking_state and returns { missing: [...] }.\n// If anything is missing, the reply asks for the FIRST missing item\n// only (one question at a time), and the state stays 'collect'."
+      },
+      "id": "4c209df4-e8eb-4637-84f4-f3b887bed623",
+      "name": "Check What Is Missing",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "90464291-2576-4c83-8fb8-af8a3ec739e4",
+              "leftValue": "={{ $json.missing.length }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "66d64974-e8bd-4720-8aeb-4a176d1c58c1",
+      "name": "All Details Collected?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1420,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "094a31c7-39a0-418e-afd8-a6e1ed79f02b",
+              "name": "reply_text",
+              "value": "=Please share the {{ $json.missing[0] }} and we will get you booked.",
+              "type": "string"
+            },
+            {
+              "id": "8da92258-1fb8-4614-84a5-4e9bcebabde3",
+              "name": "done",
+              "value": "false",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a733cd11-2cd2-4178-b6d4-744a62c80af7",
+      "name": "Return: Ask for Missing Detail",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1640,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Canonical version lives in db/schema.sql. Opening-hours fit is\n-- checked against the pack before this runs; this query checks the\n-- diary. $1 tenant_id, $2 starts_at, $3 ends_at (ends_at = start +\n-- service duration from the pack).\nSELECT NOT EXISTS (\n  SELECT 1 FROM bookings\n  WHERE tenant_id = $1 AND status = 'confirmed'\n    AND tstzrange(starts_at, ends_at) && tstzrange($2, $3)\n) AS slot_free;",
+        "options": {}
+      },
+      "id": "0c11bd49-b1e6-4ad3-a5f7-1a958b4c0660",
+      "name": "Check Availability (SQL)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1640,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cefce4f8-8870-4d8b-a63d-0dfdf97e485a",
+              "leftValue": "={{ $json.slot_free }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f1a35039-5b3a-484c-9d80-394aeb9ac9bd",
+      "name": "Slot Free?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1860,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE conversations\nSET booking_state = booking_state || '{\"state\": \"confirm\"}'::jsonb\nWHERE tenant_id = $1 AND customer_id = $2 AND status = 'open';",
+        "options": {}
+      },
+      "id": "3cfe44aa-5f8d-49ae-8ac2-80751a2bc6db",
+      "name": "Save State = confirm",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2080,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "93ba3967-2ecf-4913-af43-02853a7bd06a",
+              "name": "reply_text",
+              "value": "=Just to confirm: {{ $json.service_name }} on {{ $json.date }} at {{ $json.time }}, ${{ $json.price }}. Shall I book it?",
+              "type": "string"
+            },
+            {
+              "id": "0610c5a2-7674-43b6-86d4-f675707cbac9",
+              "name": "done",
+              "value": "false",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a395ed60-8a2f-4994-8f3b-c50921032142",
+      "name": "Return: Show Confirmation",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2300,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "da22e5cc-ab2b-4f64-ade5-da25cc613f1c",
+              "name": "reply_text",
+              "value": "=That time has just been taken. The nearest open times are {{ $json.alternatives }}. Which suits you?",
+              "type": "string"
+            },
+            {
+              "id": "28bba7a8-b56c-4663-8aff-4ddd2a05cf3f",
+              "name": "done",
+              "value": "false",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "573e5706-09b4-48e7-91e5-c089acb614a2",
+      "name": "Return: Slot Taken, Offer Alternatives",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2080,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Runs only in the confirm state, after the customer said yes.\n// key = sha256(tenant_id + lead_id + service_id + starts_at)\n// The same confirmed booking always produces the same key, so a\n// retried write returns the existing booking (db/notes.md).\nconst crypto = require('crypto');\nreturn items;"
+      },
+      "id": "98b87937-fb11-4b9c-b3aa-7ff009b3b0b4",
+      "name": "Build Idempotency Key",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- ON CONFLICT on the idempotency key: a retry is a no-op that the\n-- next node reads back. A genuine clash with someone else's booking\n-- raises the exclusion-constraint error, caught by the branch below.\nINSERT INTO bookings (tenant_id, lead_id, conversation_id, service_id,\n                      starts_at, ends_at, idempotency_key)\nVALUES ($1, $2, $3, $4, $5, $6, $7)\nON CONFLICT (tenant_id, idempotency_key) DO NOTHING\nRETURNING id;",
+        "options": {}
+      },
+      "id": "e027cc1c-e2c9-4b2a-bbd7-0c5308d57732",
+      "name": "Write Booking (idempotent insert)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1420,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO register_events (tenant_id, event_type, entity_type, entity_id, summary)\nVALUES ($1, 'booking_created', 'booking', $2, $3);\n-- The owner alert itself is delivered on the pack's owner_alerts\n-- channel in the runtime phase; this register row is its record.",
+        "options": {}
+      },
+      "id": "f8afee3c-9390-4ade-b987-f6fe8fb9f50d",
+      "name": "Register Event + Owner Alert",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1640,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads SET status = 'booked', updated_at = now()\nWHERE tenant_id = $1 AND customer_id = $2;\nUPDATE conversations SET booking_state = '{}'::jsonb\nWHERE tenant_id = $1 AND customer_id = $2 AND status = 'open';",
+        "options": {}
+      },
+      "id": "60bd2a2d-f6d2-4784-af69-1c7b30b0c674",
+      "name": "Mark Lead Booked + Clear State",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1860,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "689f97ba-33dc-4972-9145-2d98d93dfdb5",
+              "name": "reply_text",
+              "value": "=You are booked: {{ $json.service_name }} on {{ $json.date }} at {{ $json.time }}. We look forward to seeing you.",
+              "type": "string"
+            },
+            {
+              "id": "ec3e1421-c94e-4bfb-bbfe-aaf06899c6de",
+              "name": "done",
+              "value": "true",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7a7c50b8-972f-4a66-b7c6-7aa3bd36b279",
+      "name": "Return: Booked",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2080,
+        480
+      ]
+    }
+  ],
+  "connections": {
+    "Called by Chat Entry": {
+      "main": [
+        [
+          {
+            "node": "Read State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read State": {
+      "main": [
+        [
+          {
+            "node": "Route by State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by State": {
+      "main": [
+        [
+          {
+            "node": "Check What Is Missing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Idempotency Key",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check What Is Missing": {
+      "main": [
+        [
+          {
+            "node": "All Details Collected?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All Details Collected?": {
+      "main": [
+        [
+          {
+            "node": "Check Availability (SQL)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return: Ask for Missing Detail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Availability (SQL)": {
+      "main": [
+        [
+          {
+            "node": "Slot Free?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Slot Free?": {
+      "main": [
+        [
+          {
+            "node": "Save State = confirm",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return: Slot Taken, Offer Alternatives",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save State = confirm": {
+      "main": [
+        [
+          {
+            "node": "Return: Show Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Idempotency Key": {
+      "main": [
+        [
+          {
+            "node": "Write Booking (idempotent insert)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Booking (idempotent insert)": {
+      "main": [
+        [
+          {
+            "node": "Register Event + Owner Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Register Event + Owner Alert": {
+      "main": [
+        [
+          {
+            "node": "Mark Lead Booked + Clear State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Lead Booked + Clear State": {
+      "main": [
+        [
+          {
+            "node": "Return: Booked",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {}
+}

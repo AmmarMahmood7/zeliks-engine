@@ -1,0 +1,174 @@
+{
+  "name": "Zeliks Engine - Evening Summary",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Evening summary\n\nRuns once a day at closing time and sends each owner one short summary of their day, built only from register_events: leads captured, bookings made, questions the assistant could not answer, nudges sent. Fully deterministic; no AI writes or rewords it, so the numbers an owner sees are the numbers in the register.\n\nThe trigger time below is a single default. In the runtime phase each tenant's summary runs at their own closing time in their own timezone (packs carry both). Re-running is safe: summaries are unique per tenant per day and the insert updates in place.",
+        "height": 460,
+        "width": 620,
+        "color": 4
+      },
+      "id": "c3860cb7-4e3e-4d69-a672-50c24313b9b2",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "15 19 * * *"
+            }
+          ]
+        }
+      },
+      "id": "891c2498-a05f-4ae7-99e3-fd1eb2c7f36a",
+      "name": "At Close of Day",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, name, timezone FROM tenants WHERE status = 'active';",
+        "options": {}
+      },
+      "id": "f8c7a386-ac72-4c87-9311-da38ae87b020",
+      "name": "List Active Tenants",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        780,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- 'Today' is the tenant's local day, not the server's.\nSELECT event_type, summary, created_at\nFROM register_events\nWHERE tenant_id = $1\n  AND (created_at AT TIME ZONE $2)::date = (now() AT TIME ZONE $2)::date\nORDER BY created_at;",
+        "options": {}
+      },
+      "id": "02be58fc-51cf-4ca2-a2e6-6914a9a8fde0",
+      "name": "Read Today's Register",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Plain template, counts plus the lines that matter:\n// '{business} today: {n} new leads, {m} bookings.\n//  Needs you: {unanswered questions and handover summaries}.\n//  Bookings: {time, service, name} ...'\n// If a section is empty it is left out, not padded."
+      },
+      "id": "f727a6dc-3e77-400b-b082-b7793185487e",
+      "name": "Format Owner Summary (deterministic, no AI)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO summaries (tenant_id, summary_date, body, stats)\nVALUES ($1, $2, $3, $4)\nON CONFLICT (tenant_id, summary_date)\nDO UPDATE SET body = EXCLUDED.body, stats = EXCLUDED.stats;",
+        "options": {}
+      },
+      "id": "3b434a19-22d1-48fa-a68b-5ec000dc4027",
+      "name": "Save Summary (upsert)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// PLACEHOLDER - no credentials in this repo, by design.\n// Runtime phase: send the summary to the tenant's owner_alerts\n// target (Telegram first), then mark summaries.sent_at."
+      },
+      "id": "4ed758e8-c3fd-4f90-bfe1-05029d47926d",
+      "name": "OWNER DELIVERY - PLACEHOLDER (owner's channel)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1660,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "At Close of Day": {
+      "main": [
+        [
+          {
+            "node": "List Active Tenants",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Active Tenants": {
+      "main": [
+        [
+          {
+            "node": "Read Today's Register",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Today's Register": {
+      "main": [
+        [
+          {
+            "node": "Format Owner Summary (deterministic, no AI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Owner Summary (deterministic, no AI)": {
+      "main": [
+        [
+          {
+            "node": "Save Summary (upsert)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Summary (upsert)": {
+      "main": [
+        [
+          {
+            "node": "OWNER DELIVERY - PLACEHOLDER (owner's channel)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {}
+}

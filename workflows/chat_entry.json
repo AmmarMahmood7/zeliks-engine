@@ -1,0 +1,417 @@
+{
+  "name": "Zeliks Engine - Chat Entry",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Chat entry\n\nOne entry point for every channel. The channel door (Telegram first) normalizes each incoming message to `{tenant_id, customer_id, channel, text}` and posts it here. tenant_id comes from the door's configuration, never from anything the customer typed.\n\nThe agent on this page is free for questions and qualification only. Booking is handed to the Booking State Machine workflow. Tool stubs on this page define the contracts the agent may call; a tool exists for a tenant only if the tenant's pack switches it on.\n\nAfter import: connect the Postgres credential on every Postgres node.",
+        "height": 520,
+        "width": 620,
+        "color": 4
+      },
+      "id": "be28731b-5f2f-43d5-a1d3-0e7944f110aa",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat-entry",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "34ce4511-cba3-4a85-9663-5d74e1725e4d",
+      "name": "Message In (any channel)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        560,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6cd4a14d-becb-4b5b-ba29-67ae79b38432",
+              "name": "tenant_id",
+              "value": "={{ $json.body.tenant_id }}",
+              "type": "string"
+            },
+            {
+              "id": "8d3b255c-5e64-4294-b5e5-520a2207d2ae",
+              "name": "customer_id",
+              "value": "={{ $json.body.customer_id }}",
+              "type": "string"
+            },
+            {
+              "id": "4b710459-b231-40b5-8382-ed96cd1f2fe4",
+              "name": "channel",
+              "value": "={{ $json.body.channel || 'telegram' }}",
+              "type": "string"
+            },
+            {
+              "id": "87fa1bea-48b1-4cd6-9df4-80f03b91c005",
+              "name": "text",
+              "value": "={{ $json.body.text }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4d7c6f0f-c5e0-43bc-9937-f3b0f2a44076",
+      "name": "Normalize Envelope",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- One open conversation per (tenant, customer) is enforced by the\n-- partial unique index in db/schema.sql. Returns conversation_id.\nWITH conv AS (\n  INSERT INTO conversations (tenant_id, customer_id, channel)\n  VALUES ($1, $2, $3)\n  ON CONFLICT (tenant_id, customer_id) WHERE status = 'open' DO NOTHING\n  RETURNING id\n)\nINSERT INTO messages (tenant_id, conversation_id, direction, sender, body)\nSELECT $1, id, 'in', 'customer', $4 FROM conv;\n-- params: $1 tenant_id, $2 customer_id, $3 channel, $4 text",
+        "options": {}
+      },
+      "id": "3c1c33f4-9462-4ddc-802f-37844923f556",
+      "name": "Open Conversation + Save Incoming Message",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        980,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// STUB - runtime phase wires this to the Git checkout of this repo.\n// Reads packs/<tenant_id>.json, validates it against packs/schema.json,\n// runs the prompt builder (prompts/build_prompt.py logic), and returns:\n// { pack, system_prompt, tools_on: [...] }\n// Only tools listed in tools_on are registered for the agent session.\nreturn items;"
+      },
+      "id": "bf3055d3-e379-4b90-942b-99a0c667e7da",
+      "name": "Load Pack + Build Prompt (stub)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// PLACEHOLDER - no credentials in this repo, by design.\n// Runtime phase: replace with the Gemini (Vertex AI) agent node.\n// Inputs: system_prompt + conversation history + registered tools.\n// Output contract (one JSON item):\n// { intent: 'question' | 'booking' | 'handover' | 'smalltalk',\n//   reply_text: string,\n//   lead: { name, phone, need } | null,\n//   booking_request: { service_id, starts_at } | null,\n//   handover_reason: string | null }\nreturn items;"
+      },
+      "id": "e73e166a-789f-40e2-8d81-168222c70479",
+      "name": "AI AGENT - PLACEHOLDER (Gemini via Vertex AI)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// CONTRACT STUB - invoked by the agent at runtime, not a pipeline step.\n// answer(question: string) -> { found: boolean, answer: string | null }\n// Looks up the tenant pack's FAQs and facts for THIS tenant only.\n// found=false means the agent must say it will check with the owner\n// and call owner_alert. It must never invent an answer."
+      },
+      "id": "5433b18f-6c2c-4b07-838e-8a68ab488aca",
+      "name": "TOOL CONTRACT STUB - answer",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// CONTRACT STUB - invoked by the agent at runtime.\n// lead_capture(name, phone, need) -> upserts one row in leads on\n// (tenant_id, customer_id) and writes a 'lead captured' register event.\n// Called as soon as name + phone + need are known, even with no booking."
+      },
+      "id": "d738aed1-48a7-4cb7-bf74-99031c8baa8c",
+      "name": "TOOL CONTRACT STUB - lead_capture",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        820
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// CONTRACT STUB - invoked by the agent at runtime.\n// owner_alert(summary: string) -> inserts a register_events row of type\n// 'owner_alert', marks the conversation status='handed_over', and (in the\n// runtime phase) notifies the owner on the pack's owner_alerts channel.\n// After handover the agent stops replying until the owner releases it."
+      },
+      "id": "7ce98fc7-58cd-4ec3-a6a4-6ac62303e8d2",
+      "name": "TOOL CONTRACT STUB - owner_alert",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1420,
+        1020
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "9b362d4e-49c1-4b66-bf7b-0ba21d428ac3",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "booking",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f6763c41-f61f-4d4d-9e44-f571b986f6b2",
+      "name": "Booking Intent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": "REPLACE_WITH_BOOKING_WORKFLOW_ID",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "id": "1e67507f-a379-4366-8935-187008370567",
+      "name": "Run Booking State Machine",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        1860,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "04ce6f53-3f7b-486b-9af7-b3b730627390",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "handover",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f93e8566-d78a-4277-a8f8-b3240a40331c",
+      "name": "Wants a Human or Unanswerable?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1860,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO register_events (tenant_id, event_type, summary)\nVALUES ($1, 'owner_alert', $2);\n-- params: $1 tenant_id, $2 handover_reason",
+        "options": {}
+      },
+      "id": "e42d39c9-82c5-4901-8492-4e9950ed8208",
+      "name": "Flag Handover in Register",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2080,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Saves the outgoing reply. If the lead is captured but has no booking\n-- and no nudge is scheduled yet, the follow-up insert runs too; the\n-- partial unique index on followups makes the second part a no-op\n-- when a nudge already exists.\nINSERT INTO messages (tenant_id, conversation_id, direction, sender, body)\nVALUES ($1, $2, 'out', 'agent', $3);",
+        "options": {}
+      },
+      "id": "ffc889b0-5ac6-4d23-aa86-9464e2493905",
+      "name": "Save Reply + Maybe Schedule Follow-up",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        2080,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "55257b2c-ec1d-49e5-b881-5a01cded6b69",
+      "name": "Reply to Channel",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2320,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Message In (any channel)": {
+      "main": [
+        [
+          {
+            "node": "Normalize Envelope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Envelope": {
+      "main": [
+        [
+          {
+            "node": "Open Conversation + Save Incoming Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Open Conversation + Save Incoming Message": {
+      "main": [
+        [
+          {
+            "node": "Load Pack + Build Prompt (stub)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Pack + Build Prompt (stub)": {
+      "main": [
+        [
+          {
+            "node": "AI AGENT - PLACEHOLDER (Gemini via Vertex AI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI AGENT - PLACEHOLDER (Gemini via Vertex AI)": {
+      "main": [
+        [
+          {
+            "node": "Booking Intent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking Intent?": {
+      "main": [
+        [
+          {
+            "node": "Run Booking State Machine",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wants a Human or Unanswerable?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Booking State Machine": {
+      "main": [
+        [
+          {
+            "node": "Save Reply + Maybe Schedule Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wants a Human or Unanswerable?": {
+      "main": [
+        [
+          {
+            "node": "Flag Handover in Register",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save Reply + Maybe Schedule Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flag Handover in Register": {
+      "main": [
+        [
+          {
+            "node": "Reply to Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Reply + Maybe Schedule Follow-up": {
+      "main": [
+        [
+          {
+            "node": "Reply to Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {}
+}

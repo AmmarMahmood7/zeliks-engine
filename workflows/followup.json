@@ -1,0 +1,234 @@
+{
+  "name": "Zeliks Engine - Follow-up Nudge",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Follow-up nudge\n\nTwo halves. The webhook half is called by the chat entry workflow when a lead has been captured but the conversation has gone quiet; it schedules exactly one nudge (the partial unique index on followups makes a second scheduling a no-op). The timer half runs every 30 minutes, picks up due nudges, sends them, and marks them sent.\n\nNudge text comes from a fixed template with the business name and the lead's need filled in. No AI writes the nudge. One nudge per quiet spell; if the lead replies, any later quiet spell can schedule a fresh one. If the lead books, the pending nudge is cancelled by the booking workflow's status change plus the status filter in the send query.",
+        "height": 520,
+        "width": 620,
+        "color": 4
+      },
+      "id": "4602d051-fafa-4671-be64-064521404d75",
+      "name": "Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -120,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "schedule-followup",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "d98f0a55-ad87-49a0-84a2-980489530113",
+      "name": "Schedule Nudge (from Chat Entry)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        560,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO followups (tenant_id, lead_id, conversation_id, due_at)\nVALUES ($1, $2, $3, $4)\nON CONFLICT (tenant_id, lead_id) WHERE status = 'scheduled' DO NOTHING;\n-- $4 due_at is set by the caller: last customer message + the quiet\n-- window from the pack (default 4 hours).",
+        "options": {}
+      },
+      "id": "f9de93e7-20fc-4fa4-8765-0dbf545168e3",
+      "name": "Insert Follow-up (idempotent)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        780,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "8fa91c43-4413-4e61-aaab-02b84a732474",
+      "name": "Every 30 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT f.id, f.tenant_id, f.lead_id, l.customer_id, l.name, l.need\nFROM followups f\nJOIN leads l ON l.id = f.lead_id AND l.tenant_id = f.tenant_id\nWHERE f.status = 'scheduled' AND f.due_at <= now()\n  AND l.status IN ('new', 'engaged', 'quiet')\nFOR UPDATE OF f SKIP LOCKED\nLIMIT 50;",
+        "options": {}
+      },
+      "id": "1bfddd09-a13a-4e73-919f-39a7364b988b",
+      "name": "Find Due Follow-ups",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        780,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "abc55825-8032-4147-a8db-601c8a4874d7",
+              "leftValue": "={{ $json.id !== undefined }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bcbba502-6bc7-481e-8788-e2c26cf24ff4",
+      "name": "Any Due?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Fixed template, filled from the pack and the lead. No AI.\n// 'Hi {first_name}, this is {business_name}. You were asking about\n//  {need}. Would you like me to hold a time for you this week?'\n// Spanish-speaking leads get the pack's Spanish version of the\n// same template, chosen by the language of their last message."
+      },
+      "id": "021c4417-1582-4369-8779-d7bb24b39969",
+      "name": "Fill Nudge Template (deterministic)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1220,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// PLACEHOLDER - no credentials in this repo, by design.\n// Runtime phase: replace with the tenant's channel send (Telegram\n// bot for this tenant) to customer_id, then pass the item through."
+      },
+      "id": "40b0ebc5-9359-42f9-969d-a70690c44e65",
+      "name": "CHANNEL SEND - PLACEHOLDER (Telegram)",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE followups SET status = 'sent', sent_at = now(), attempts = attempts + 1\nWHERE id = $1;\nINSERT INTO register_events (tenant_id, event_type, entity_type, summary)\nVALUES ($2, 'followup_sent', 'lead', $3, 'Follow-up nudge sent');",
+        "options": {}
+      },
+      "id": "6a6b5a25-094a-4419-9cb8-7a9fab9c0ef5",
+      "name": "Mark Sent + Register Event",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.5,
+      "position": [
+        1660,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule Nudge (from Chat Entry)": {
+      "main": [
+        [
+          {
+            "node": "Insert Follow-up (idempotent)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 30 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Find Due Follow-ups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Due Follow-ups": {
+      "main": [
+        [
+          {
+            "node": "Any Due?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Due?": {
+      "main": [
+        [
+          {
+            "node": "Fill Nudge Template (deterministic)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fill Nudge Template (deterministic)": {
+      "main": [
+        [
+          {
+            "node": "CHANNEL SEND - PLACEHOLDER (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CHANNEL SEND - PLACEHOLDER (Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Mark Sent + Register Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {}
+}
