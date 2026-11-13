@@ -11,12 +11,12 @@ module.exports = {
   // Model: 'gemini' (Google AI Studio) or 'openai' (any OpenAI-compatible API: OpenAI, DeepSeek, OpenRouter).
   model: {
     provider: env.MODEL_PROVIDER || 'gemini',
-    name: env.MODEL_NAME || 'gemini-flash-latest',
+    name: env.MODEL_NAME || 'gemini-2.5-flash',
     fallbackName: env.MODEL_FALLBACK_NAME || 'gemini-flash-lite-latest', // used when the main model fails
     apiKey: env.MODEL_API_KEY || env.GEMINI_API_KEY,
     baseUrl: env.MODEL_BASE_URL || 'https://api.openai.com/v1',
     temperature: Number(env.MODEL_TEMPERATURE || 0.3),
-    timeoutMs: Number(env.MODEL_TIMEOUT_MS || 30000),
+    timeoutMs: Number(env.MODEL_TIMEOUT_MS || 15000),
   },
 
   historyMessages: Number(env.HISTORY_MESSAGES || 20), // recent messages sent to the model
