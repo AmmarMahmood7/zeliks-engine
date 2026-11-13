@@ -1,358 +1,276 @@
 /*
- * Zeliks website widget (v2).
- *
- * Installed with ONE tag:
- *   <script src="https://n8n.moodtech.cloud/zeliks-chat/widget.js"
- *           data-zeliks-key="wk_..." async></script>
- *
- * The look is deliberately plain: a round launcher with the business's
- * initial (or its logo), a tidy panel with the business name and an
- * "Online" line, the business's greeting, clean bubbles, a typing
- * indicator, and one input row. The business's colour comes from its
- * pack (widget.primary_color). Nothing else is decorated.
- *
- * The page may set window.ZELIKS_PACKET (an object, or a function
- * returning one) to tell the assistant what the visitor is looking at:
- *   { page: {url, title}, item: {kind, name, price, ...},
- *     cart: [items], visitor: {name} }
- * The packet is read fresh before every message, so cart / shortlist
- * changes are seen straight away. window.ZeliksWidget.open(), .close()
- * and .setPacket(obj) are also available to the page.
- *
- * Messages typed before the session is ready are QUEUED and sent, in
- * order, as soon as the session opens (v1 silently dropped them).
+ * Zeliks chat widget. One tag on any site:
+ *   <script src=".../widget.js" data-zeliks-key="wk_..." async></script>
+ * Optional: data-variant="studio|classic|soft|noir|editorial", data-theme="auto|light|dark", data-open="true".
+ * Styles live in a shadow root, so the host site's CSS never leaks in or out.
  */
 (function () {
   'use strict';
-  var script =
-    document.currentScript ||
-    document.querySelector('script[data-zeliks-key]');
-  if (!script) return;
-  var key = script.getAttribute('data-zeliks-key');
-  if (!key) return;
-  var base = script.src.replace(/\/widget\.js(\?.*)?$/, '');
+  var script = document.currentScript;
+  if (!script || window.__zeliksWidget) return;
+  window.__zeliksWidget = true;
 
-  var state = {
-    config: null,
-    sessionToken: null,
-    sessionPromise: null,
-    sessionFailed: false,
-    opened: false,
-    handedOver: false,
-    sending: false,
-    queue: [],
-    packetOverride: null,
-  };
+  var KEY = script.getAttribute('data-zeliks-key');
+  var BASE = script.src.replace(/\/widget\.js.*$/, '');
+  var VARIANTS = ['studio', 'classic', 'soft', 'noir', 'editorial'];
+  var store = window.localStorage;
+  var STORE = 'zeliks:' + KEY;
 
-  function collectPacket() {
-    var p = {};
-    try {
-      var src =
-        typeof window.ZELIKS_PACKET === 'function'
-          ? window.ZELIKS_PACKET()
-          : window.ZELIKS_PACKET;
-      if (src && typeof src === 'object') p = JSON.parse(JSON.stringify(src));
-    } catch (e) {
-      /* a broken page packet must never break the widget */
-    }
-    if (state.packetOverride) {
-      for (var k in state.packetOverride) p[k] = state.packetOverride[k];
-    }
-    p.page = p.page || {};
-    if (!p.page.url) p.page.url = window.location.href;
-    if (!p.page.title) p.page.title = document.title;
-    return p;
+  // Variant look: references noted per style.
+  var CSS = [
+    ':host{all:initial}',
+    '*{box-sizing:border-box;margin:0;padding:0;font:inherit;color:inherit}',
+    '.z{--ac:#0f5c63;--bg:#fbfaf7;--fg:#1d1d1f;--mut:#6e6e73;--line:rgba(0,0,0,.08);--ub:var(--ac);--uf:#fff;--ab:transparent;--af:var(--fg);--in:#fff;--sh:0 24px 60px rgba(0,0,0,.18),0 2px 8px rgba(0,0,0,.06);',
+    'font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,"Noto Sans Arabic",sans-serif;color:var(--fg);-webkit-font-smoothing:antialiased}',
+    '.z.dark{--bg:#161617;--fg:#f5f5f7;--mut:#98989d;--line:rgba(255,255,255,.1);--in:#232325;--sh:0 24px 60px rgba(0,0,0,.5)}',
+    // launcher
+    '.launch{position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;border:0;background:var(--ac);color:#fff;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.22);display:grid;place-items:center;z-index:2147483646;transition:transform .2s}',
+    '.launch:hover{transform:scale(1.05)}.left .launch{right:auto;left:20px}',
+    '.launch svg{width:26px;height:26px}',
+    // panel
+    '.panel{position:fixed;bottom:88px;right:20px;width:384px;height:min(640px,calc(100vh - 112px));background:var(--bg);border-radius:16px;box-shadow:var(--sh);display:flex;flex-direction:column;overflow:hidden;z-index:2147483647;opacity:0;transform:translateY(12px) scale(.98);pointer-events:none;transition:opacity .2s,transform .2s}',
+    '.left .panel{right:auto;left:20px}.open .panel{opacity:1;transform:none;pointer-events:auto}',
+    '.top{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line)}',
+    '.logo{width:32px;height:32px;border-radius:8px;background:var(--ac);color:#fff;display:grid;place-items:center;font-weight:600;overflow:hidden;flex:none}.logo img{width:100%;height:100%;object-fit:cover}',
+    '.name{font-weight:600;font-size:15px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.x{width:32px;height:32px;border:0;border-radius:8px;background:transparent;cursor:pointer;display:grid;place-items:center;color:var(--mut)}.x:hover{background:var(--line)}',
+    '.grab,.back,.min,.plus,.av{display:none}',
+    '.row{display:flex;align-items:flex-end;gap:8px;max-width:100%}.row .m{max-width:100%}',
+    '.av{width:28px;height:28px;flex:none;border-radius:50%;background:var(--ac);color:#fff;font-size:12px;font-weight:600;place-items:center;overflow:hidden}.av img{width:100%;height:100%;object-fit:cover}',
+    '.v-classic .av,.v-noir .av{display:grid}',
+    '.log{flex:1;overflow-y:auto;padding:20px 16px 8px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}',
+    '.m{max-width:85%;white-space:pre-wrap;word-wrap:break-word;unicode-bidi:plaintext}',
+    '.m.u{align-self:flex-end;background:var(--ub);color:var(--uf);padding:9px 13px;border-radius:14px 14px 4px 14px}',
+    '.m.a{align-self:flex-start;background:var(--ab);color:var(--af)}',
+    '.m.a b{font-weight:600}',
+    '.dots{display:inline-flex;gap:4px;padding:6px 0}.dots i{width:6px;height:6px;border-radius:50%;background:var(--mut);animation:b 1.2s infinite}.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}',
+    '@keyframes b{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-3px)}}',
+    '.foot{padding:10px 12px 12px;display:flex;align-items:flex-end;gap:8px}.foot .box{flex:1}',
+    '.box{display:flex;align-items:flex-end;gap:8px;background:var(--in);border:1px solid var(--line);border-radius:14px;padding:6px 6px 6px 14px}',
+    '.box textarea{flex:1;border:0;outline:0;background:transparent;resize:none;max-height:120px;padding:7px 0;font-size:15px;line-height:1.4}',
+    '.box textarea::placeholder{color:var(--mut)}',
+    '.send{width:34px;height:34px;flex:none;border:0;border-radius:10px;background:var(--ac);color:#fff;cursor:pointer;display:grid;place-items:center;transition:opacity .15s}.send:disabled{opacity:.35;cursor:default}',
+    '.by{display:block;text-align:center;font-size:11px;color:var(--mut);padding-top:8px;text-decoration:none}',
+    // welcome (studio, editorial)
+    '.hello{padding:28px 20px 8px}.hello h2{font-size:26px;line-height:1.2;font-weight:600;letter-spacing:-.02em}.hello p{color:var(--mut);margin-top:8px}',
+    // studio: after Plain and Claude. Calm, user tinted, assistant as plain text.
+    '.v-studio{--ub:color-mix(in srgb,var(--ac) 12%,var(--in));--uf:var(--fg)}',
+    '.v-studio .top{border:0}',
+    // classic: after Navan and Loops. Brand header, bubbles both sides.
+    '.v-classic .top{background:var(--ac);color:#fff;border:0}.v-classic .top .x{color:#fff}.v-classic .top .x:hover{background:rgba(255,255,255,.15)}.v-classic .logo{background:rgba(255,255,255,.18)}',
+    '.v-classic{--ab:color-mix(in srgb,var(--fg) 6%,var(--bg))}.v-classic .m.a{padding:9px 13px;border-radius:14px 14px 14px 4px}',
+    // soft: after Dot and Bevel. Tinted gradient, white bubbles, frosted composer.
+    '.v-soft .panel{background:linear-gradient(180deg,color-mix(in srgb,var(--ac) 18%,var(--bg)),var(--bg) 55%)}',
+    '.v-soft{--ab:var(--in)}.v-soft .m.a{padding:10px 14px;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.05)}.v-soft .top{border:0}',
+    '.v-soft .box{background:color-mix(in srgb,var(--in) 80%,transparent);backdrop-filter:blur(12px)}',
+    // noir: after Chatbase and Copilot. Always dark, light user bubble.
+    '.v-noir{--bg:#0e0e10;--fg:#f5f5f7;--mut:#8e8e93;--line:rgba(255,255,255,.09);--in:#1c1c1f;--ub:#f5f5f7;--uf:#0e0e10;--ab:#1c1c1f}',
+    '.v-noir .m.a{padding:9px 13px;border-radius:14px 14px 14px 4px}.v-noir .send{background:#f5f5f7;color:#0e0e10}',
+    // editorial: after Pi. Serif answers, hairlines, no assistant bubble.
+    '.v-editorial{--bg:#f7f3ec;--in:#fffdf9;--ub:transparent;--uf:var(--mut)}.v-editorial.dark{--bg:#1b1916;--in:#24211d}',
+    '.v-editorial .m.a{font-family:Newsreader,"Iowan Old Style",Georgia,serif;font-size:17px;line-height:1.55;max-width:100%}',
+    '.v-editorial .m.u{padding:0;border-radius:0;text-align:right}.v-editorial .hello h2{font-family:Newsreader,"Iowan Old Style",Georgia,serif;font-weight:500;font-size:30px}',
+    // Phones: each style follows an iOS chat screen on Mobbin.
+    '@media (max-width:640px){',
+    '.z{font-size:17px;line-height:1.4}.open .launch{display:none}',
+    '.panel{inset:0;width:auto;height:100%;bottom:0;right:0;border-radius:0;transform:translateY(100%);transition:transform .32s cubic-bezier(.32,.72,0,1)}.open .panel{transform:none}',
+    '.top{position:relative;min-height:calc(env(safe-area-inset-top) + 52px);padding:calc(env(safe-area-inset-top) + 8px) 12px 8px;justify-content:center;border-bottom:.5px solid var(--line);background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(180%) blur(20px)}',
+    '.top .logo{display:none}.name{flex:none;font-size:17px;font-weight:600;text-align:center}',
+    '.top .x{position:absolute;right:10px;width:32px;height:32px;border-radius:50%;background:color-mix(in srgb,var(--fg) 8%,transparent);color:var(--fg)}',
+    '.log{padding:16px 16px 8px;gap:8px}.m{max-width:80%}',
+    '.m.u{border-radius:18px;padding:8px 14px}',
+    '.foot{padding:8px 12px calc(env(safe-area-inset-bottom) + 10px)}',
+    '.box{border-radius:20px;padding:4px 4px 4px 14px}.box textarea{font-size:17px;padding:6px 0}',
+    '.send{width:32px;height:32px;border-radius:50%}',
+    '.plus{display:grid;place-items:center;width:36px;height:36px;flex:none;border:0;border-radius:50%;background:color-mix(in srgb,var(--fg) 7%,transparent);color:var(--fg);margin-bottom:2px}',
+    // studio = ChatGPT iOS: no bar line, close at left in a circle, floating composer card.
+    '.v-studio .top{border:0;background:var(--bg);backdrop-filter:none}.v-studio .top .x{right:auto;left:12px}',
+    '.v-studio .m.a{max-width:100%}.v-studio .m.u{--ub:color-mix(in srgb,var(--fg) 7%,var(--bg))}',
+    '.v-studio .foot{padding:8px 12px calc(env(safe-area-inset-bottom) + 12px)}.v-studio .plus{display:none}',
+    '.v-studio .box{border-radius:22px;padding:8px 8px 8px 16px;box-shadow:0 6px 24px rgba(0,0,0,.08)}.v-studio .send{background:var(--fg);color:var(--bg)}',
+    // classic = Vestiaire / Rivian: back chevron, logo and name on the left, bubbles with logo.
+    '.v-classic .top{justify-content:flex-start;gap:10px;background:var(--ac)}.v-classic .back{display:grid;place-items:center;width:28px;height:36px;border:0;background:none;color:#fff}',
+    '.v-classic .top .logo{display:grid;width:34px;height:34px;border-radius:50%}.v-classic .name{text-align:left;color:#fff}.v-classic .top .x{display:none}',
+    '.v-classic .log{background:color-mix(in srgb,var(--fg) 4%,var(--bg))}.v-classic{--ab:var(--in)}.v-classic .m.a{border-radius:18px;box-shadow:0 1px 1px rgba(0,0,0,.04)}',
+    '.v-classic .plus{background:none}',
+    // soft = Dot: tinted gradient, no hard bar, frosted composer, separate plus.
+    '.v-soft .top{border:0;background:transparent;backdrop-filter:none}.v-soft .top .x{right:auto;left:12px;background:color-mix(in srgb,var(--in) 70%,transparent)}',
+    '.v-soft .panel{background:linear-gradient(180deg,color-mix(in srgb,var(--ac) 26%,var(--bg)),color-mix(in srgb,var(--ac) 8%,var(--bg)) 60%,var(--bg))}',
+    '.v-soft .m.a{border-radius:18px}.v-soft .foot{background:color-mix(in srgb,var(--bg) 60%,transparent);backdrop-filter:blur(20px)}',
+    '.v-soft .plus{background:color-mix(in srgb,var(--in) 80%,transparent)}',
+    // noir = One: dark, Minimize in the accent colour, centred title, round avatars.
+    '.v-noir .min{display:block;position:absolute;left:14px;border:0;background:none;color:color-mix(in srgb,var(--ac) 55%,#fff);font-size:17px}',
+    '.v-noir .top{background:#0e0e10;backdrop-filter:none}.v-noir .top .x{background:none}',
+    '.v-noir .m.a{border-radius:18px}.v-noir .box{background:transparent;border:1px solid rgba(255,255,255,.25);border-radius:14px}.v-noir .plus{display:none}',
+    // editorial = Agoda: a sheet over the dimmed page, grabber, round close.
+    '.v-editorial .panel{top:12px;border-radius:14px 14px 0 0;box-shadow:0 -1px 0 var(--line)}',
+    '.v-editorial.open::before{content:"";position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:2147483646}',
+    '.v-editorial .grab{display:block;width:36px;height:5px;border-radius:3px;background:color-mix(in srgb,var(--fg) 22%,transparent);margin:6px auto 0}',
+    '.v-editorial .top{padding-top:8px;min-height:48px;background:transparent;backdrop-filter:none}.v-editorial .plus{display:none}',
+    '}',
+  ].join('');
+
+  var ICON_CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z"/></svg>';
+  var ICON_X = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+  var ICON_BACK = '<svg width="12" height="20" viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2 2 10l8 8"/></svg>';
+  var ICON_PLUS = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
+  var ICON_UP = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>';
+
+  function el(tag, cls, html) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (html != null) e.innerHTML = html;
+    return e;
   }
-
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+  }
+  // Just **bold** and links: enough for prices and lists, nothing that can inject markup.
+  function format(text) {
+    return esc(text)
+      .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+      .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>');
+  }
   function api(path, body) {
-    return fetch(base + path, {
+    return fetch(BASE + path, {
       method: body ? 'POST' : 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Widget-Key': key,
-      },
+      headers: { 'Content-Type': 'application/json', 'X-Widget-Key': KEY },
       body: body ? JSON.stringify(body) : undefined,
-    }).then(function (res) {
-      return res
-        .json()
-        .catch(function () {
-          return {};
-        })
-        .then(function (data) {
-          if (!res.ok) {
-            var err = new Error(data.error || 'request_failed');
-            err.status = res.status;
-            err.data = data;
-            throw err;
-          }
-          return data;
-        });
-    });
+    }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
   }
+  function load() { try { return JSON.parse(store.getItem(STORE)) || {}; } catch (e) { return {}; } }
+  function save(s) { try { store.setItem(STORE, JSON.stringify(s)); } catch (e) {} }
 
-  // ------------------------------------------------------------ UI shell
-  var host = document.createElement('div');
-  host.id = 'zeliks-widget-host';
-  var root = host.attachShadow({ mode: 'open' });
-  root.innerHTML =
-    '<style>' +
-    ':host{all:initial}' +
-    '.zw-launcher{position:fixed;bottom:20px;z-index:2147483000;width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,.22);color:#fff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:0;overflow:hidden}' +
-    '.zw-launcher .zw-initial{font-size:23px;font-weight:600;line-height:1}' +
-    '.zw-launcher img{width:100%;height:100%;object-fit:cover;display:block}' +
-    '.zw-panel{position:fixed;bottom:88px;z-index:2147483000;width:370px;max-width:calc(100vw - 24px);height:560px;max-height:calc(100vh - 116px);background:#fff;border:1px solid rgba(0,0,0,.09);border-radius:16px;box-shadow:0 16px 48px rgba(0,0,0,.20);display:none;flex-direction:column;overflow:hidden;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1c1e21}' +
-    '.zw-panel.open{display:flex}' +
-    '.zw-head{display:flex;align-items:center;gap:10px;padding:13px 14px;border-bottom:1px solid #ececec;background:#fff}' +
-    '.zw-avatar{width:38px;height:38px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:600;overflow:hidden}' +
-    '.zw-avatar img{width:100%;height:100%;object-fit:cover;display:block}' +
-    '.zw-who{flex:1;min-width:0}' +
-    '.zw-name{font-size:15px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-    '.zw-status{font-size:12.5px;color:#71767c;line-height:1.3;display:flex;align-items:center;gap:5px}' +
-    '.zw-dot{width:7px;height:7px;border-radius:50%;background:#2faf5e;flex:none}' +
-    '.zw-close{border:none;background:none;color:#71767c;font-size:22px;line-height:1;cursor:pointer;padding:4px 6px;font-family:inherit}' +
-    '.zw-msgs{flex:1;overflow-y:auto;padding:16px 14px;background:#fafafa;display:flex;flex-direction:column;gap:8px}' +
-    '.zw-msg{max-width:82%;padding:9px 12px;border-radius:12px;font-size:14.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word}' +
-    '.zw-msg.them{background:#fff;border:1px solid #e8e8e8;align-self:flex-start;border-bottom-left-radius:4px}' +
-    '.zw-msg.me{color:#fff;align-self:flex-end;border-bottom-right-radius:4px}' +
-    '.zw-note{font-size:12.5px;color:#71767c;text-align:center;padding:2px 10px;line-height:1.45}' +
-    '.zw-typing{display:flex;gap:4px;align-items:center;padding:12px}' +
-    '.zw-typing i{width:7px;height:7px;border-radius:50%;background:#b9bdc2;display:block;animation:zwb 1.2s infinite}' +
-    '.zw-typing i:nth-child(2){animation-delay:.15s}' +
-    '.zw-typing i:nth-child(3){animation-delay:.3s}' +
-    '@keyframes zwb{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-3px);opacity:1}}' +
-    '.zw-form{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid #ececec;background:#fff}' +
-    '.zw-form input{flex:1;border:none;padding:9px 2px;font-size:14.5px;outline:none;font-family:inherit;color:inherit;background:none;min-width:0}' +
-    '.zw-form input::placeholder{color:#9aa0a6}' +
-    '.zw-send{width:36px;height:36px;border-radius:50%;border:none;color:#fff;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;padding:0}' +
-    '.zw-send svg{width:17px;height:17px;fill:#fff}' +
-    '.zw-send:disabled,.zw-form input:disabled{opacity:.55;cursor:default}' +
-    '@media (max-width:480px){.zw-panel{bottom:86px;height:68vh}}' +
-    '</style>' +
-    '<button class="zw-launcher" part="launcher" aria-label="Chat with us">' +
-    '<span class="zw-initial"></span>' +
-    '</button>' +
-    '<div class="zw-panel" role="dialog" aria-label="Chat">' +
-    '<div class="zw-head">' +
-    '<div class="zw-avatar"><span class="zw-initial"></span></div>' +
-    '<div class="zw-who"><div class="zw-name"></div>' +
-    '<div class="zw-status"><span class="zw-dot"></span>Online</div></div>' +
-    '<button class="zw-close" aria-label="Close chat">&times;</button>' +
-    '</div>' +
-    '<div class="zw-msgs"></div>' +
-    '<form class="zw-form"><input type="text" autocomplete="off" placeholder="Type a message" aria-label="Your message">' +
-    '<button class="zw-send" type="submit" aria-label="Send message">' +
-    '<svg viewBox="0 0 24 24"><path d="M3.4 20.4l17.8-7.5c.8-.35.8-1.45 0-1.8L3.4 3.6c-.66-.29-1.39.2-1.39.91L2 9.12c0 .5.37.93.87.99L17 12 2.87 13.88c-.5.07-.87.5-.87 1l.01 4.61c0 .72.73 1.2 1.39.91z"/></svg>' +
-    '</button></form>' +
-    '</div>';
-
-  var launcher = root.querySelector('.zw-launcher');
-  var panel = root.querySelector('.zw-panel');
-  var avatar = root.querySelector('.zw-avatar');
-  var nameEl = root.querySelector('.zw-name');
-  var msgs = root.querySelector('.zw-msgs');
-  var form = root.querySelector('.zw-form');
-  var input = root.querySelector('.zw-form input');
-  var sendBtn = root.querySelector('.zw-send');
-
-  function setFace(el, cfg) {
-    // Business face: its logo if it has one, else its initial letter.
-    el.innerHTML = '';
-    if (cfg.logo_url) {
-      var img = document.createElement('img');
-      img.src = cfg.logo_url;
-      img.alt = '';
-      img.addEventListener('error', function () {
-        el.innerHTML = '';
-        var s = document.createElement('span');
-        s.className = 'zw-initial';
-        s.textContent = initialOf(cfg);
-        el.appendChild(s);
-      });
-      el.appendChild(img);
-    } else {
-      var s = document.createElement('span');
-      s.className = 'zw-initial';
-      s.textContent = initialOf(cfg);
-      el.appendChild(s);
-    }
-  }
-  function initialOf(cfg) {
-    var n = (cfg.business_name || 'C').trim();
-    return n ? n.charAt(0).toUpperCase() : 'C';
-  }
-
-  function applyConfig(cfg) {
-    var color = cfg.primary_color || '#333333';
-    var side = cfg.position === 'bottom-left' ? 'left' : 'right';
-    launcher.style.background = color;
-    launcher.style[side] = '20px';
-    panel.style[side] = '12px';
-    avatar.style.background = color;
-    nameEl.textContent = cfg.business_name || 'Chat with us';
-    sendBtn.style.background = color;
-    setFace(launcher, cfg);
-    setFace(avatar, cfg);
-    root.querySelectorAll('.zw-msg.me').forEach(function (el) {
-      el.style.background = color;
-    });
-  }
-
-  function addMsg(text, who) {
-    var el = document.createElement('div');
-    el.className = 'zw-msg ' + who;
-    el.textContent = text;
-    if (who === 'me' && state.config) {
-      el.style.background = state.config.primary_color || '#333';
-    }
-    msgs.appendChild(el);
-    msgs.scrollTop = msgs.scrollHeight;
-    return el;
-  }
-  function addNote(text) {
-    var el = document.createElement('div');
-    el.className = 'zw-note';
-    el.textContent = text;
-    msgs.appendChild(el);
-    msgs.scrollTop = msgs.scrollHeight;
-  }
-  function showTyping() {
-    var el = document.createElement('div');
-    el.className = 'zw-msg them zw-typing';
-    el.innerHTML = '<i></i><i></i><i></i>';
-    msgs.appendChild(el);
-    msgs.scrollTop = msgs.scrollHeight;
-    return el;
-  }
-
-  // ------------------------------------------------------------ session
-
-  function ensureSession() {
-    if (state.sessionToken) return Promise.resolve();
-    if (state.sessionPromise) return state.sessionPromise;
-    state.sessionFailed = false;
-    state.sessionPromise = api('/api/session', { packet: collectPacket() })
-      .then(function (s) {
-        state.sessionToken = s.session_token;
-        state.sessionPromise = null;
-        if (s.greeting) addMsg(s.greeting, 'them');
-        if (s.handed_over) lockHandover();
-      })
-      .catch(function (err) {
-        state.sessionPromise = null;
-        state.sessionFailed = true;
-        throw err;
-      });
-    return state.sessionPromise;
-  }
-
-  function lockHandover() {
-    state.handedOver = true;
-    state.queue.length = 0;
-    input.disabled = true;
-    sendBtn.disabled = true;
-    input.placeholder = 'The owner will pick this up from here.';
-  }
-
-  // One message at a time, in the order they were typed. A message sent
-  // before the session exists waits in the queue instead of vanishing.
-  function pump() {
-    if (state.sending || state.handedOver) return;
-    var text = state.queue[0];
-    if (text === undefined) return;
-    if (!state.sessionToken) {
-      ensureSession()
-        .then(pump)
-        .catch(function () {
-          state.queue.length = 0;
-          addNote('Sorry, the chat could not start. Please try again later.');
-        });
-      return;
-    }
-    state.queue.shift();
-    state.sending = true;
-    var typing = showTyping();
-    api('/api/chat', {
-      session_token: state.sessionToken,
-      text: text,
-      packet: collectPacket(),
-    })
-      .then(function (r) {
-        typing.remove();
-        if (r.reply_text) addMsg(r.reply_text, 'them');
-        if (r.handed_over) {
-          addNote('This conversation has been passed to the owner.');
-          lockHandover();
-        }
-      })
-      .catch(function () {
-        typing.remove();
-        addNote('Sorry, that message did not go through. Please try again.');
-      })
-      .then(function () {
-        state.sending = false;
-        pump();
-      });
-  }
-
-  function openPanel() {
-    panel.classList.add('open');
-    if (!state.opened) {
-      state.opened = true;
-      ensureSession().catch(function () {
-        addNote('Sorry, the chat could not start. Please try again later.');
-      });
-    }
-    setTimeout(function () {
-      input.focus();
-    }, 60);
-  }
-  function closePanel() {
-    panel.classList.remove('open');
-  }
-
-  launcher.addEventListener('click', function () {
-    if (panel.classList.contains('open')) closePanel();
-    else openPanel();
-  });
-  root
-    .querySelector('.zw-close')
-    .addEventListener('click', closePanel);
-  panel.addEventListener('keydown', function (ev) {
-    if (ev.key === 'Escape') closePanel();
-  });
-
-  form.addEventListener('submit', function (ev) {
-    ev.preventDefault();
-    var text = input.value.trim();
-    if (!text || state.handedOver) return;
-    input.value = '';
-    addMsg(text, 'me');
-    state.queue.push(text);
-    pump();
-  });
-
-  window.ZeliksWidget = {
-    open: openPanel,
-    close: closePanel,
-    setPacket: function (obj) {
-      state.packetOverride = obj || null;
-    },
-  };
-
-  function mount() {
+  function start(cfg) {
+    var host = el('div');
+    host.id = 'zeliks-widget';
     document.body.appendChild(host);
-    api('/api/widget-config')
-      .then(function (cfg) {
-        state.config = cfg;
-        applyConfig(cfg);
-      })
-      .catch(function () {
-        /* Not allowed on this domain, or the service is down:
-           stay invisible rather than showing a broken widget. */
-        host.remove();
-        delete window.ZeliksWidget;
-      });
+    var root = host.attachShadow({ mode: 'open' });
+    root.appendChild(el('style', null, CSS));
+
+    var variant = script.getAttribute('data-variant') || cfg.variant || 'studio';
+    if (VARIANTS.indexOf(variant) < 0) variant = 'studio';
+    var theme = script.getAttribute('data-theme') || cfg.theme || 'auto';
+    var dark = theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+    if (variant === 'editorial' && !document.getElementById('zeliks-font')) {
+      var f = el('link'); f.id = 'zeliks-font'; f.rel = 'stylesheet';
+      f.href = 'https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap';
+      document.head.appendChild(f);
+    }
+    var z = el('div', 'z v-' + variant + (dark ? ' dark' : '') + (cfg.position === 'bottom-left' ? ' left' : ''));
+    z.style.setProperty('--ac', cfg.primary_color || '#0f5c63');
+    root.appendChild(z);
+
+    var state = load();
+    var initial = (cfg.business_name || '?').trim().charAt(0).toUpperCase();
+    var logo = cfg.logo_url ? '<img alt="" src="' + esc(cfg.logo_url) + '">' : esc(initial);
+    var launch = el('button', 'launch', ICON_CHAT);
+    launch.setAttribute('aria-label', 'Chat with ' + cfg.business_name);
+    var panel = el('div', 'panel');
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'Chat with ' + cfg.business_name);
+    panel.innerHTML =
+      '<div class="grab"></div>' +
+      '<div class="top"><button class="back" aria-label="Close">' + ICON_BACK + '</button><button class="min" aria-label="Close">Minimize</button>' +
+      '<div class="logo">' + logo + '</div>' +
+      '<div class="name">' + esc(cfg.business_name) + '</div><button class="x" aria-label="Close">' + ICON_X + '</button></div>' +
+      '<div class="log" aria-live="polite"></div>' +
+      '<div class="foot"><button class="plus" aria-label="More" tabindex="-1">' + ICON_PLUS + '</button><div class="box"><textarea rows="1" placeholder="Write a message" aria-label="Message"></textarea>' +
+      '<button class="send" aria-label="Send" disabled>' + ICON_UP + '</button></div></div>';
+    z.appendChild(panel);
+    z.appendChild(launch);
+
+    var log = panel.querySelector('.log');
+    var input = panel.querySelector('textarea');
+    var send = panel.querySelector('.send');
+    var busy = false;
+
+    function add(role, text) {
+      var m = el('div', 'm ' + role, format(text));
+      m.dir = 'auto';
+      if (role === 'a') {
+        var row = el('div', 'row');
+        row.appendChild(el('div', 'av', logo));
+        row.appendChild(m);
+        log.appendChild(row);
+        log.scrollTop = log.scrollHeight;
+        return m;
+      }
+      log.appendChild(m);
+      log.scrollTop = log.scrollHeight;
+      return m;
+    }
+    function render() {
+      log.innerHTML = '';
+      var msgs = state.messages || [];
+      if (!msgs.length && (variant === 'studio' || variant === 'editorial')) {
+        var h = el('div', 'hello', '<h2>' + esc(cfg.greeting || 'How can we help?') + '</h2>');
+        h.dir = 'auto';
+        log.appendChild(h);
+      } else if (!msgs.length) {
+        add('a', cfg.greeting || 'Hi! How can we help?');
+      }
+      msgs.forEach(function (m) { add(m.r, m.t); });
+    }
+    function setOpen(open) {
+      z.classList.toggle('open', open);
+      if (open) setTimeout(function () { input.focus(); }, 200);
+    }
+    function grow() {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+      send.disabled = busy || !input.value.trim();
+    }
+    function session() {
+      if (state.token) return Promise.resolve(state.token);
+      return api('/api/session', {}).then(function (s) { state.token = s.session_token; save(state); return state.token; });
+    }
+    function submit() {
+      var text = input.value.trim();
+      if (!text || busy) return;
+      if (!(state.messages || []).length) log.innerHTML = '';
+      busy = true;
+      input.value = '';
+      grow();
+      state.messages = (state.messages || []).concat({ r: 'u', t: text });
+      save(state);
+      add('u', text);
+      var typing = add('a', '');
+      typing.innerHTML = '<span class="dots"><i></i><i></i><i></i></span>';
+      session()
+        .then(function (token) {
+          return api('/api/chat', { session_token: token, text: text, packet: { page: { url: location.href, title: document.title } } });
+        })
+        .then(function (r) { return r.reply_text || 'Sorry, something went wrong. Please try again.'; })
+        .catch(function () { return 'Sorry, I could not connect. Please try again in a moment.'; })
+        .then(function (reply) {
+          (typing.parentNode.className === 'row' ? typing.parentNode : typing).remove();
+          add('a', reply);
+          state.messages = state.messages.concat({ r: 'a', t: reply }).slice(-60);
+          save(state);
+          busy = false;
+          grow();
+        });
+    }
+
+    launch.addEventListener('click', function () { setOpen(!z.classList.contains('open')); });
+    [].forEach.call(panel.querySelectorAll('.x,.back,.min'), function (b) { b.addEventListener('click', function () { setOpen(false); }); });
+    input.addEventListener('input', grow);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
+    });
+    send.addEventListener('click', submit);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') setOpen(false); });
+
+    render();
+    if (script.getAttribute('data-open') === 'true') setOpen(true);
+    window.ZeliksWidget = { open: function () { setOpen(true); }, close: function () { setOpen(false); } };
   }
-  if (document.body) mount();
-  else document.addEventListener('DOMContentLoaded', mount);
+
+  function boot() {
+    api('/api/widget-config').then(start).catch(function (e) { console.warn('Zeliks widget:', e.message); });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();
