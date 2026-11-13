@@ -12,6 +12,7 @@ module.exports = {
   model: {
     provider: env.MODEL_PROVIDER || 'gemini',
     name: env.MODEL_NAME || 'gemini-flash-lite-latest',
+    fallbackName: env.MODEL_FALLBACK_NAME || 'gemini-flash-latest', // used when the main model fails
     apiKey: env.MODEL_API_KEY || env.GEMINI_API_KEY,
     baseUrl: env.MODEL_BASE_URL || 'https://api.openai.com/v1',
     temperature: Number(env.MODEL_TEMPERATURE || 0.3),

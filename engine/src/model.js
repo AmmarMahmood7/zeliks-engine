@@ -29,7 +29,24 @@ async function post(url, headers, body) {
 }
 
 // messages: [{role: 'user'|'assistant', text}]
+// Tries the main model, then the fallback model if the main one errors or returns nothing.
 async function generate({ system, messages }) {
+  const names = [config.model.name, config.model.fallbackName].filter((n, i, a) => n && a.indexOf(n) === i);
+  let lastErr;
+  for (const name of names) {
+    try {
+      const text = await callModel(name, system, messages);
+      if (parseJson(text)) return text;
+      lastErr = new Error(`${name} returned no JSON: ${String(text).slice(0, 120)}`);
+    } catch (e) {
+      lastErr = e;
+    }
+    console.warn(`model ${name} failed: ${lastErr.message}`);
+  }
+  throw lastErr;
+}
+
+async function callModel(name, system, messages) {
   const m = config.model;
   if (!m.apiKey) throw new Error('MODEL_API_KEY is not set');
 
@@ -38,7 +55,7 @@ async function generate({ system, messages }) {
       `${m.baseUrl.replace(/\/$/, '')}/chat/completions`,
       { Authorization: `Bearer ${m.apiKey}` },
       {
-        model: m.name,
+        model: name,
         temperature: m.temperature,
         response_format: { type: 'json_object' },
         messages: [{ role: 'system', content: system }, ...messages.map((x) => ({ role: x.role, content: x.text }))],
@@ -48,7 +65,7 @@ async function generate({ system, messages }) {
   }
 
   const data = await post(
-    `https://generativelanguage.googleapis.com/v1beta/models/${m.name}:generateContent`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${name}:generateContent`,
     { 'x-goog-api-key': m.apiKey },
     {
       systemInstruction: { parts: [{ text: system }] },
