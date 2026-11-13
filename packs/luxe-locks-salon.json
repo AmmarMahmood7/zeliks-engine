@@ -1,1 +1,270 @@
-{"business":{"address":"1214 South Congress Ave, Austin, TX 78704","area":"Austin, Texas","email":"hello@luxelocksaustin.example","name":"Luxe Locks Salon & Spa","phone":"+1 (512) 555-0148","timezone":"America/Chicago","type":"hair salon and spa","website":"luxelocksaustin.example"},"currency":"USD","faqs":[{"answer":"There is a free parking lot right behind the building, off South Congress. Street parking on the avenue is metered.","question":"Is there parking nearby?"},{"answer":"We take all major cards, Apple Pay, Google Pay, and cash. Payment is after your appointment, at the front desk.","question":"How can I pay?"},{"answer":"Yes, if a stylist is free. Appointments are seen first, so booking ahead is the safer bet, especially on Fridays and Saturdays.","question":"Do you take walk-ins?"},{"answer":"You can cancel or move your appointment free of charge up to 24 hours before it starts. Inside 24 hours, or if you do not show up, there is a $25 fee.","question":"What is your cancellation policy?"},{"answer":"Please arrive on time. We hold your chair for 10 minutes. After that we may need to shorten the service or rebook you, so the next customer is not kept waiting.","question":"What if I am running late?"},{"answer":"About 2.5 hours, depending on your hair length and how light you want to go. Your stylist will confirm the timing when you book.","question":"How long does balayage take?"},{"answer":"Yes, a 15 minute consultation is free. It is a good idea before a big color change, so the stylist can look at your hair and give you an exact price.","question":"Do you offer a free consultation?"},{"answer":"Tips are not included in our prices. They are always appreciated by the team, and entirely up to you.","question":"Should I tip my stylist?"},{"answer":"We work with sulfate-free, cruelty-free professional lines. If you have an allergy or a product you must avoid, tell us when you book and we will note it on your appointment.","question":"What products do you use?"},{"answer":"Yes, in the salon and over the phone. They can be used for any service and never expire.","question":"Do you sell gift cards?"}],"hours":{"notes":"Closed on Thanksgiving Day and December 25. Holiday week hours may differ; ask us.","weekly":{"fri":{"close":"19:00","open":"09:00"},"mon":null,"sat":{"close":"18:00","open":"09:00"},"sun":{"close":"17:00","open":"10:00"},"thu":{"close":"19:00","open":"09:00"},"tue":{"close":"19:00","open":"09:00"},"wed":{"close":"19:00","open":"09:00"}}},"owner_alerts":{"channel":"telegram","target":"OWNER_CHAT_ID_PLACEHOLDER"},"payment_notes":"Cards, Apple Pay, Google Pay, and cash. Paid at the front desk after the appointment. No deposit is needed for standard services; a $50 deposit is taken for keratin treatments, applied to the final bill.","policies":{"cancellation":"Free cancel or reschedule up to 24 hours before the appointment. Inside 24 hours, or a no-show, is a $25 fee.","late_arrival":"10 minute grace period. After that the service may be shortened or rebooked.","walk_ins":"Walk-ins are welcome when a stylist is free. Booked appointments are seen first."},"services":[{"bookable":true,"description":"Cut, wash, and finish with a blow-dry style.","duration_minutes":60,"id":"womens-haircut","name":"Women's Haircut","price":65},{"bookable":true,"description":"Cut and finish. Wash included.","duration_minutes":45,"id":"mens-haircut","name":"Men's Haircut","price":45},{"bookable":true,"description":"Hand-painted highlights with toner and a gloss finish. Exact price confirmed after a quick look at hair length.","duration_minutes":150,"id":"balayage","name":"Balayage with Toner","price":185},{"bookable":true,"description":"One all-over color, roots to ends, with a gloss finish.","duration_minutes":120,"id":"full-color","name":"Full Color","price":120},{"bookable":true,"description":"Smoothing keratin treatment. Results last 3 to 5 months. A $50 deposit is taken at booking and comes off the final bill.","duration_minutes":180,"id":"keratin-treatment","name":"Keratin Treatment","price":240},{"bookable":true,"description":"Wash and a styled blowout, smooth or with waves.","duration_minutes":45,"id":"blowout","name":"Blowout","price":55},{"bookable":true,"description":"Repair treatment for dry or damaged hair. Can be added to any other service or booked on its own.","duration_minutes":30,"id":"deep-conditioning","name":"Deep Conditioning Treatment","price":40},{"bookable":true,"description":"For children under 12. A parent or guardian stays in the salon during the cut.","duration_minutes":30,"id":"kids-haircut","name":"Kids Haircut (Under 12)","price":35}],"tenant_id":"luxe-locks-salon","tone_notes":"Warm and relaxed, like a good front desk. Short answers. Plain words, no sales pressure. Prices always in dollars, quoted exactly as listed.","tools":{"answer":true,"booking":true,"evening_summary":true,"follow_up":true,"lead_capture":true,"owner_alert":true}}
+{
+  "business": {
+    "address": "1214 South Congress Ave, Austin, TX 78704",
+    "area": "Austin, Texas",
+    "email": "hello@luxelocksaustin.example",
+    "name": "Luxe Locks Salon & Spa",
+    "phone": "+1 (512) 555-0148",
+    "timezone": "America/Chicago",
+    "type": "hair salon and spa",
+    "website": "luxelocksaustin.example"
+  },
+  "currency": "USD",
+  "faqs": [
+    {
+      "answer": "There is a free parking lot right behind the building, off South Congress. Street parking on the avenue is metered.",
+      "question": "Is there parking nearby?"
+    },
+    {
+      "answer": "We take all major cards, Apple Pay, Google Pay, and cash. Payment is after your appointment, at the front desk.",
+      "question": "How can I pay?"
+    },
+    {
+      "answer": "Yes, if a stylist is free. Appointments are seen first, so booking ahead is the safer bet, especially on Fridays and Saturdays.",
+      "question": "Do you take walk-ins?"
+    },
+    {
+      "answer": "You can cancel or move your appointment free of charge up to 24 hours before it starts. Inside 24 hours, or if you do not show up, there is a $25 fee.",
+      "question": "What is your cancellation policy?"
+    },
+    {
+      "answer": "Please arrive on time. We hold your chair for 10 minutes. After that we may need to shorten the service or rebook you, so the next customer is not kept waiting.",
+      "question": "What if I am running late?"
+    },
+    {
+      "answer": "About 2.5 hours, depending on your hair length and how light you want to go. Your stylist will confirm the timing when you book.",
+      "question": "How long does balayage take?"
+    },
+    {
+      "answer": "Yes, a 15 minute consultation is free. It is a good idea before a big color change, so the stylist can look at your hair and give you an exact price.",
+      "question": "Do you offer a free consultation?"
+    },
+    {
+      "answer": "Tips are not included in our prices. They are always appreciated by the team, and entirely up to you.",
+      "question": "Should I tip my stylist?"
+    },
+    {
+      "answer": "We work with sulfate-free, cruelty-free professional lines. If you have an allergy or a product you must avoid, tell us when you book and we will note it on your appointment.",
+      "question": "What products do you use?"
+    },
+    {
+      "answer": "Yes, in the salon and over the phone. They can be used for any service and never expire.",
+      "question": "Do you sell gift cards?"
+    }
+  ],
+  "hours": {
+    "notes": "Closed on Thanksgiving Day and December 25. Holiday week hours may differ; ask us.",
+    "weekly": {
+      "fri": {
+        "close": "19:00",
+        "open": "09:00"
+      },
+      "mon": null,
+      "sat": {
+        "close": "18:00",
+        "open": "09:00"
+      },
+      "sun": {
+        "close": "17:00",
+        "open": "10:00"
+      },
+      "thu": {
+        "close": "19:00",
+        "open": "09:00"
+      },
+      "tue": {
+        "close": "19:00",
+        "open": "09:00"
+      },
+      "wed": {
+        "close": "19:00",
+        "open": "09:00"
+      }
+    }
+  },
+  "owner_alerts": {
+    "channel": "telegram",
+    "target": "OWNER_CHAT_ID_PLACEHOLDER"
+  },
+  "payment_notes": "Cards, Apple Pay, Google Pay, and cash. Paid at the front desk after the appointment. No deposit is needed for standard services; a $50 deposit is taken for keratin treatments, applied to the final bill.",
+  "policies": {
+    "cancellation": "Free cancel or reschedule up to 24 hours before the appointment. Inside 24 hours, or a no-show, is a $25 fee.",
+    "late_arrival": "10 minute grace period. After that the service may be shortened or rebooked.",
+    "walk_ins": "Walk-ins are welcome when a stylist is free. Booked appointments are seen first."
+  },
+  "services": [
+    {
+      "bookable": true,
+      "description": "Cut, wash, and finish with a blow-dry style.",
+      "duration_minutes": 60,
+      "id": "womens-haircut",
+      "name": "Women's Haircut",
+      "price": 65
+    },
+    {
+      "bookable": true,
+      "description": "Cut and finish. Wash included.",
+      "duration_minutes": 45,
+      "id": "mens-haircut",
+      "name": "Men's Haircut",
+      "price": 45
+    },
+    {
+      "bookable": true,
+      "description": "Hand-painted highlights with toner and a gloss finish. Exact price confirmed after a quick look at hair length.",
+      "duration_minutes": 150,
+      "id": "balayage",
+      "name": "Balayage with Toner",
+      "price": 185
+    },
+    {
+      "bookable": true,
+      "description": "One all-over color, roots to ends, with a gloss finish.",
+      "duration_minutes": 120,
+      "id": "full-color",
+      "name": "Full Color",
+      "price": 120
+    },
+    {
+      "bookable": true,
+      "description": "Smoothing keratin treatment. Results last 3 to 5 months. A $50 deposit is taken at booking and comes off the final bill.",
+      "duration_minutes": 180,
+      "id": "keratin-treatment",
+      "name": "Keratin Treatment",
+      "price": 240
+    },
+    {
+      "bookable": true,
+      "description": "Wash and a styled blowout, smooth or with waves.",
+      "duration_minutes": 45,
+      "id": "blowout",
+      "name": "Blowout",
+      "price": 55
+    },
+    {
+      "bookable": true,
+      "description": "Repair treatment for dry or damaged hair. Can be added to any other service or booked on its own.",
+      "duration_minutes": 30,
+      "id": "deep-conditioning",
+      "name": "Deep Conditioning Treatment",
+      "price": 40
+    },
+    {
+      "bookable": true,
+      "description": "For children under 12. A parent or guardian stays in the salon during the cut.",
+      "duration_minutes": 30,
+      "id": "kids-haircut",
+      "name": "Kids Haircut (Under 12)",
+      "price": 35
+    }
+  ],
+  "tenant_id": "luxe-locks-salon",
+  "tone_notes": "Warm and relaxed, like a good front desk. Short answers. Plain words, no sales pressure. Prices always in dollars, quoted exactly as listed.",
+  "tools": {
+    "answer": true,
+    "booking": true,
+    "evening_summary": true,
+    "follow_up": true,
+    "lead_capture": true,
+    "owner_alert": true
+  },
+  "pack_version": 2,
+  "staff": [
+    {
+      "name": "Maya Chen",
+      "role": "Senior stylist",
+      "bio": "Leads the colour team.",
+      "specialties": [
+        "Balayage with Toner",
+        "Full Color"
+      ],
+      "languages": [
+        "English",
+        "Mandarin"
+      ]
+    },
+    {
+      "name": "Jordan Lee",
+      "role": "Stylist",
+      "specialties": [
+        "Women's Haircut",
+        "Men's Haircut",
+        "Blowout"
+      ]
+    },
+    {
+      "name": "Sofia Ramirez",
+      "role": "Treatment specialist",
+      "specialties": [
+        "Keratin Treatment",
+        "Deep Conditioning Treatment"
+      ],
+      "languages": [
+        "English",
+        "Spanish"
+      ]
+    }
+  ],
+  "languages": {
+    "supported": [
+      "English",
+      "Spanish",
+      "Arabic"
+    ],
+    "default": "English"
+  },
+  "role_card": {
+    "goal": "Answer questions about Luxe Locks services, prices and hours, and capture the details of anyone who wants the salon to get back to them.",
+    "qualification_questions": [
+      "What service are you interested in?",
+      "What is the best phone number or email for us to reach you?"
+    ],
+    "handover_rules": [
+      "The visitor asks to speak to a human",
+      "The visitor is unhappy or complaining",
+      "You cannot answer the question from the facts given"
+    ]
+  },
+  "rules": [
+    "Never invent a service, price or policy that is not in these facts.",
+    "This website chat cannot book appointments. If a visitor wants an appointment, take their name and phone number and tell them the front desk will call to arrange it."
+  ],
+  "knowledge": [
+    {
+      "title": "Accessibility",
+      "text": "The salon is step-free from the South Congress entrance and the wash stations are wheelchair accessible. Guide dogs are welcome.",
+      "tags": [
+        "access",
+        "wheelchair",
+        "step-free"
+      ]
+    },
+    {
+      "title": "Bridal and occasion styling",
+      "text": "For weddings and big occasions we suggest a trial session first so the stylist can plan the look. Group bookings for parties of four or more are quoted individually; ask the front desk.",
+      "tags": [
+        "wedding",
+        "bridal",
+        "group",
+        "party"
+      ]
+    }
+  ],
+  "widget": {
+    "greeting": "Hi, this is the Luxe Locks front desk. Ask me about services, prices or opening hours.",
+    "primary_color": "#8C5A3A",
+    "position": "bottom-right",
+    "allowed_domains": [
+      "demos.zeliks.tech",
+      ".zeliks-demos.pages.dev",
+      ".zeliks-demos-git.pages.dev",
+      "n8n.moodtech.cloud"
+    ]
+  },
+  "owner": {
+    "name": "Luxe Locks owner",
+    "email": "hello@luxelocksaustin.example",
+    "alert_channel": "telegram",
+    "alert_target": "OWNER_CHAT_ID_PLACEHOLDER"
+  }
+}

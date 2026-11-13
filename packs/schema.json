@@ -1,1 +1,588 @@
-{"$defs":{"dayHours":{"anyOf":[{"type":"null"},{"additionalProperties":false,"properties":{"close":{"pattern":"^([01][0-9]|2[0-3]):[0-5][0-9]$","type":"string"},"open":{"pattern":"^([01][0-9]|2[0-3]):[0-5][0-9]$","type":"string"}},"required":["open","close"],"type":"object"}],"description":"One day. null means closed. Times are 24h local time in the business timezone."}},"$id":"https://zeliks.tech/engine/pack-schema.json","$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false,"description":"One file per business. Holds everything that differs between businesses: facts, services, hours, FAQs, and which tools are switched on. Validated in CI or by hand before a pack ships.","properties":{"business":{"additionalProperties":false,"properties":{"address":{"type":"string"},"area":{"description":"City and state, written the way a customer would say it.","minLength":1,"type":"string"},"email":{"format":"email","type":"string"},"name":{"minLength":1,"type":"string"},"phone":{"type":"string"},"timezone":{"description":"IANA timezone, e.g. America/Chicago. All hours and bookings use this.","minLength":1,"type":"string"},"type":{"description":"What kind of business: salon, clinic, cleaning service, and so on.","minLength":1,"type":"string"},"website":{"type":"string"}},"required":["name","type","area","timezone"],"type":"object"},"currency":{"description":"ISO currency code for all prices in this pack.","pattern":"^[A-Z]{3}$","type":"string"},"faqs":{"items":{"additionalProperties":false,"properties":{"answer":{"minLength":1,"type":"string"},"question":{"minLength":1,"type":"string"}},"required":["question","answer"],"type":"object"},"type":"array"},"hours":{"additionalProperties":false,"properties":{"notes":{"description":"Anything the plain weekly grid cannot say, e.g. holiday closures.","type":"string"},"weekly":{"additionalProperties":false,"properties":{"fri":{"$ref":"#/$defs/dayHours"},"mon":{"$ref":"#/$defs/dayHours"},"sat":{"$ref":"#/$defs/dayHours"},"sun":{"$ref":"#/$defs/dayHours"},"thu":{"$ref":"#/$defs/dayHours"},"tue":{"$ref":"#/$defs/dayHours"},"wed":{"$ref":"#/$defs/dayHours"}},"required":["mon","tue","wed","thu","fri","sat","sun"],"type":"object"}},"required":["weekly"],"type":"object"},"owner_alerts":{"additionalProperties":false,"properties":{"channel":{"description":"Where owner alerts and the evening summary go, e.g. telegram.","type":"string"},"target":{"description":"Channel-specific destination. Placeholder until the runtime phase sets the real value.","type":"string"}},"required":["channel","target"],"type":"object"},"payment_notes":{"description":"How customers pay, in the business's own words.","type":"string"},"policies":{"additionalProperties":false,"properties":{"cancellation":{"type":"string"},"late_arrival":{"type":"string"},"walk_ins":{"type":"string"}},"type":"object"},"services":{"items":{"additionalProperties":false,"properties":{"bookable":{"default":true,"description":"False for services the agent may describe but not book.","type":"boolean"},"description":{"type":"string"},"duration_minutes":{"minimum":5,"type":"integer"},"id":{"description":"Stable slug. Bookings store this id.","pattern":"^[a-z0-9]+(-[a-z0-9]+)*$","type":"string"},"name":{"minLength":1,"type":"string"},"price":{"description":"Price in the pack currency.","minimum":0,"type":"number"}},"required":["id","name","price","duration_minutes"],"type":"object"},"minItems":1,"type":"array"},"tenant_id":{"description":"Slug. Must match the pack file name (without .json) and the tenants.id row in Postgres.","pattern":"^[a-z0-9]+(-[a-z0-9]+)*$","type":"string"},"tone_notes":{"description":"How the assistant should sound for this business, in plain words.","type":"string"},"tools":{"additionalProperties":false,"description":"Tool switches. The engine registers exactly the tools set to true for a session. A tool that is off is not offered to the model at all.","properties":{"answer":{"type":"boolean"},"booking":{"type":"boolean"},"evening_summary":{"type":"boolean"},"follow_up":{"type":"boolean"},"lead_capture":{"type":"boolean"},"owner_alert":{"type":"boolean"}},"required":["answer","lead_capture","booking","follow_up","owner_alert","evening_summary"],"type":"object"}},"required":["tenant_id","business","currency","services","hours","faqs","tools","owner_alerts"],"title":"Zeliks Engine config pack","type":"object"}
+{
+  "$defs": {
+    "dayHours": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "close": {
+              "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+              "type": "string"
+            },
+            "open": {
+              "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "open",
+            "close"
+          ],
+          "type": "object"
+        }
+      ],
+      "description": "One day. null means closed. Times are 24h local time in the business timezone."
+    },
+    "listing": {
+      "additionalProperties": false,
+      "properties": {
+        "area": {
+          "description": "Neighbourhood or district, the way a customer would say it.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "baths": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "beds": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "highlight": {
+          "description": "One short factual line about the property.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "id": {
+          "description": "Stable slug for the listing.",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "price": {
+          "description": "Price in the pack currency.",
+          "minimum": 0,
+          "type": "number"
+        },
+        "tenure": {
+          "enum": [
+            "freehold",
+            "leasehold"
+          ],
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "flat",
+            "terraced",
+            "semi-detached",
+            "detached",
+            "bungalow"
+          ],
+          "type": "string"
+        },
+        "url": {
+          "description": "Link to the full listing.",
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "area",
+        "type",
+        "beds",
+        "baths",
+        "price",
+        "tenure",
+        "highlight",
+        "url"
+      ],
+      "type": "object"
+    },
+    "staffMember": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bio": {
+          "type": "string"
+        },
+        "specialties": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "photo_url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "role"
+      ]
+    },
+    "roleCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The job this business gives its assistant: what it is trying to achieve, what to ask, and when to hand over to the owner.",
+      "properties": {
+        "goal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "qualification_questions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "handover_rules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "goal"
+      ]
+    },
+    "knowledgeEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Free-text knowledge: a document, catalogue section, price list note or policy write-up the assistant may answer from.",
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "title",
+        "text"
+      ]
+    },
+    "widgetConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Website widget settings for this business. The widget key itself is generated by the loader and stored in Postgres, never in the pack.",
+      "properties": {
+        "greeting": {
+          "type": "string"
+        },
+        "primary_color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "accent_color": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "position": {
+          "type": "string",
+          "enum": [
+            "bottom-right",
+            "bottom-left"
+          ]
+        },
+        "logo_url": {
+          "type": "string"
+        },
+        "allowed_domains": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Hostnames the widget may run on. An entry starting with a dot (e.g. .example.com) allows that domain and all its subdomains."
+        }
+      },
+      "required": [
+        "allowed_domains"
+      ]
+    }
+  },
+  "$id": "https://zeliks.tech/engine/pack-schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One file per business. Holds everything that differs between businesses: facts, services, hours, FAQs, and which tools are switched on. Validated in CI or by hand before a pack ships.",
+  "properties": {
+    "business": {
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "area": {
+          "description": "City and state, written the way a customer would say it.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "email": {
+          "format": "email",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "timezone": {
+          "description": "IANA timezone, e.g. America/Chicago. All hours and bookings use this.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "type": {
+          "description": "What kind of business: salon, clinic, cleaning service, and so on.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "website": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "area",
+        "timezone"
+      ],
+      "type": "object"
+    },
+    "currency": {
+      "description": "ISO currency code for all prices in this pack.",
+      "pattern": "^[A-Z]{3}$",
+      "type": "string"
+    },
+    "faqs": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "question": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "question",
+          "answer"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "hours": {
+      "additionalProperties": false,
+      "properties": {
+        "notes": {
+          "description": "Anything the plain weekly grid cannot say, e.g. holiday closures.",
+          "type": "string"
+        },
+        "weekly": {
+          "additionalProperties": false,
+          "properties": {
+            "fri": {
+              "$ref": "#/$defs/dayHours"
+            },
+            "mon": {
+              "$ref": "#/$defs/dayHours"
+            },
+            "sat": {
+              "$ref": "#/$defs/dayHours"
+            },
+            "sun": {
+              "$ref": "#/$defs/dayHours"
+            },
+            "thu": {
+              "$ref": "#/$defs/dayHours"
+            },
+            "tue": {
+              "$ref": "#/$defs/dayHours"
+            },
+            "wed": {
+              "$ref": "#/$defs/dayHours"
+            }
+          },
+          "required": [
+            "mon",
+            "tue",
+            "wed",
+            "thu",
+            "fri",
+            "sat",
+            "sun"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "weekly"
+      ],
+      "type": "object"
+    },
+    "listings": {
+      "description": "Optional. Items for sale from a list, e.g. an estate agent's properties. Only packs that sell from a list carry it. The prompt builder renders it as the only items the assistant may offer.",
+      "items": {
+        "$ref": "#/$defs/listing"
+      },
+      "type": "array"
+    },
+    "owner_alerts": {
+      "additionalProperties": false,
+      "properties": {
+        "channel": {
+          "description": "Where owner alerts and the evening summary go, e.g. telegram.",
+          "type": "string"
+        },
+        "target": {
+          "description": "Channel-specific destination. Placeholder until the runtime phase sets the real value.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel",
+        "target"
+      ],
+      "type": "object"
+    },
+    "payment_notes": {
+      "description": "How customers pay, in the business's own words.",
+      "type": "string"
+    },
+    "policies": {
+      "additionalProperties": false,
+      "properties": {
+        "cancellation": {
+          "type": "string"
+        },
+        "late_arrival": {
+          "type": "string"
+        },
+        "walk_ins": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "services": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "bookable": {
+            "default": true,
+            "description": "False for services the agent may describe but not book.",
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "duration_minutes": {
+            "description": "Typical duration. Null when the business does not publish one.",
+            "minimum": 5,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "id": {
+            "description": "Stable slug. Bookings store this id.",
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "price": {
+            "description": "Price in the pack currency. Null when the business does not publish a price for this service.",
+            "minimum": 0,
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "price",
+          "duration_minutes"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "tenant_id": {
+      "description": "Slug. Must match the pack file name (without .json) and the tenants.id row in Postgres.",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "type": "string"
+    },
+    "tone_notes": {
+      "description": "How the assistant should sound for this business, in plain words.",
+      "type": "string"
+    },
+    "tools": {
+      "additionalProperties": false,
+      "description": "Tool switches. The engine registers exactly the tools set to true for a session. A tool that is off is not offered to the model at all.",
+      "properties": {
+        "answer": {
+          "type": "boolean"
+        },
+        "booking": {
+          "type": "boolean"
+        },
+        "evening_summary": {
+          "type": "boolean"
+        },
+        "follow_up": {
+          "type": "boolean"
+        },
+        "lead_capture": {
+          "type": "boolean"
+        },
+        "owner_alert": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "answer",
+        "lead_capture",
+        "booking",
+        "follow_up",
+        "owner_alert",
+        "evening_summary"
+      ],
+      "type": "object"
+    },
+    "pack_version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Pack format version. 2 adds staff, languages, role card, rules, knowledge, widget config and owner block. Absent means version 1."
+    },
+    "staff": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/staffMember"
+      },
+      "description": "People at the business the assistant may talk about: names, roles, specialties."
+    },
+    "languages": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "supported": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "default": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "supported",
+        "default"
+      ],
+      "description": "Languages the assistant answers in. It replies in the customer's language when supported."
+    },
+    "role_card": {
+      "$ref": "#/$defs/roleCard"
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Free-standing business rules the assistant must follow, beyond the three fixed policy slots."
+    },
+    "knowledge": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/knowledgeEntry"
+      }
+    },
+    "widget": {
+      "$ref": "#/$defs/widgetConfig"
+    },
+    "owner": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string"
+        },
+        "alert_channel": {
+          "type": "string"
+        },
+        "alert_target": {
+          "type": "string"
+        }
+      },
+      "description": "The owner or manager: who leads and handovers are flagged for."
+    }
+  },
+  "required": [
+    "tenant_id",
+    "business",
+    "currency",
+    "services",
+    "hours",
+    "faqs",
+    "tools",
+    "owner_alerts"
+  ],
+  "title": "Zeliks Engine config pack",
+  "type": "object"
+}

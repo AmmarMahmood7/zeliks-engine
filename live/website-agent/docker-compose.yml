@@ -1,0 +1,28 @@
+services:
+  chat:
+    build:
+      context: /docker/zeliks-chat/build
+      dockerfile: Dockerfile
+    container_name: zeliks-chat
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - PUBLIC_BASE_URL=https://n8n.moodtech.cloud/zeliks-chat
+      - MODEL_PROVIDER=aistudio
+    volumes:
+      - ./secrets:/app/secrets:ro
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.zeliks-chat.rule=Host(`n8n.moodtech.cloud`) && PathPrefix(`/zeliks-chat`)
+      - traefik.http.routers.zeliks-chat.entrypoints=web,websecure
+      - traefik.http.routers.zeliks-chat.tls=true
+      - traefik.http.routers.zeliks-chat.tls.certresolver=mytlschallenge
+      - traefik.http.middlewares.zeliks-chat-strip.stripprefix.prefixes=/zeliks-chat
+      - traefik.http.routers.zeliks-chat.middlewares=zeliks-chat-strip
+      - traefik.http.services.zeliks-chat.loadbalancer.server.port=8080
+    networks:
+      - n8n_default
+
+networks:
+  n8n_default:
+    external: true

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assistant context editor | Zeliks</title>
+<meta name="description" content="Edit what a Zeliks website assistant knows. Save, and the next chat answers from the new text straight away.">
+<style>
+  :root { --ink:#22201d; --paper:#faf9f6; --accent:#8C5A3A; --line:#e3ded4; --soft:#6f6a60; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--paper); color:var(--ink); }
+  main { max-width:860px; margin:0 auto; padding:38px 20px 80px; }
+  h1 { font-size:28px; margin:0 0 8px; }
+  p.lede { color:var(--soft); line-height:1.6; margin:0 0 22px; font-size:15.5px; }
+  label { display:block; font-size:13.5px; font-weight:600; margin:18px 0 6px; }
+  select, input[type="password"], input[type="text"] { width:100%; padding:10px 12px; border:1px solid #cfc9bb; border-radius:8px; font-size:15px; background:#fff; font-family:inherit; }
+  textarea { width:100%; min-height:420px; padding:14px; border:1px solid #cfc9bb; border-radius:8px; font-size:14px; line-height:1.55; font-family:ui-monospace,Menlo,Consolas,monospace; background:#fff; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
+  button { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:11px 18px; font-size:14.5px; cursor:pointer; }
+  button.secondary { background:#fff; color:var(--ink); border:1px solid #cfc9bb; }
+  button:disabled { opacity:.55; cursor:default; }
+  #status { margin-top:14px; font-size:14.5px; min-height:22px; }
+  #status.ok { color:#2e6b34; }
+  #status.err { color:#a02c22; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:10px; padding:18px; margin-top:26px; }
+  .card h2 { font-size:19px; margin:0 0 8px; }
+  .card p { color:var(--soft); font-size:14.5px; line-height:1.6; margin:0 0 12px; }
+  code.snippet { display:block; background:#f4f1ea; border:1px solid var(--line); border-radius:8px; padding:12px; font-size:13px; overflow-x:auto; white-space:nowrap; }
+  a { color:var(--accent); }
+  .links { margin-top:26px; font-size:14.5px; color:var(--soft); line-height:1.9; }
+</style>
+</head>
+<body>
+<main>
+  <!-- Zeliks website assistant demo pages, Phase 1. The editor below talks to the live chat service. -->
+  <h1>Assistant context editor</h1>
+  <p class="lede">
+    This is the “Add Context” moment. The text below is everything the
+    assistant for that business knows: its services, prices, hours,
+    policies and tone. Change anything, press Save, then start a fresh
+    chat on that business's page. The assistant answers from the new text
+    straight away. Nothing is redeployed and nothing restarts.
+  </p>
+
+  <label for="biz">Business</label>
+  <select id="biz">
+    <option value="wk_50c936ed66238e440e071767f174f582">Luxe Locks Salon &amp; Spa (salon demo)</option>
+    <option value="wk_0f7154c18849c0bdef2079edfa9a15bb">Hartwell &amp; Grey Estate Agents (estate demo)</option>
+  </select>
+
+  <label for="pin">Edit PIN</label>
+  <input type="password" id="pin" autocomplete="off" placeholder="The PIN from Ammar">
+
+  <div class="row">
+    <button id="loadBtn" class="secondary">Load current context</button>
+  </div>
+
+  <label for="ctx">Context text</label>
+  <textarea id="ctx" placeholder="Press “Load current context” first."></textarea>
+
+  <div class="row">
+    <button id="saveBtn">Save context</button>
+  </div>
+  <div id="status"></div>
+
+  <div class="card">
+    <h2>Create a third business</h2>
+    <p>
+      Give it a name and it is created blank: a widget key, a starter
+      context you can then load and edit above (it joins the list at the
+      top), and a one-tag snippet you can paste into any page on
+      demos.zeliks.tech.
+    </p>
+    <label for="newName">New business name</label>
+    <input type="text" id="newName" placeholder="e.g. Sunrise Bakery">
+    <div class="row">
+      <button id="createBtn" class="secondary">Create business</button>
+    </div>
+    <div id="createOut" style="margin-top:12px;"></div>
+  </div>
+
+  <div class="links">
+    Try the assistants:<br>
+    <a href="/zeliks-chat/demo/salon/">Luxe Locks salon page</a><br>
+    <a href="/zeliks-chat/demo/estate/">Hartwell &amp; Grey property page</a>
+  </div>
+</main>
+
+<script>
+  var BASE = 'https://n8n.moodtech.cloud/zeliks-chat';
+  var bizSel = document.getElementById('biz');
+  var pinEl = document.getElementById('pin');
+  var ctxEl = document.getElementById('ctx');
+  var statusEl = document.getElementById('status');
+  var loadedFor = null;
+
+  function status(msg, ok) {
+    statusEl.textContent = msg;
+    statusEl.className = ok === true ? 'ok' : ok === false ? 'err' : '';
+  }
+  function headers() {
+    return { 'Content-Type': 'application/json', 'X-Widget-Key': bizSel.value, 'X-Edit-Pin': pinEl.value.trim() };
+  }
+  function apiError(data, fallback) {
+    return (data && data.message) || fallback;
+  }
+
+  document.getElementById('loadBtn').addEventListener('click', function () {
+    if (!pinEl.value.trim()) { status('Enter the edit PIN first.', false); return; }
+    status('Loading...');
+    fetch(BASE + '/api/context', { headers: headers() })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (x) {
+        if (!x.ok) { status(apiError(x.d, 'Could not load the context.'), false); return; }
+        ctxEl.value = x.d.context_text || '';
+        loadedFor = bizSel.value;
+        status('Loaded the current context for ' + x.d.business_name + '.', true);
+      })
+      .catch(function () { status('Could not reach the assistant service.', false); });
+  });
+
+  document.getElementById('saveBtn').addEventListener('click', function () {
+    if (!pinEl.value.trim()) { status('Enter the edit PIN first.', false); return; }
+    if (!ctxEl.value.trim()) { status('The context is empty. Load it first, then edit.', false); return; }
+    if (loadedFor && loadedFor !== bizSel.value) {
+      status('This text was loaded for a different business. Load again for the selected one.', false);
+      return;
+    }
+    status('Saving...');
+    fetch(BASE + '/api/context', {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ context_text: ctxEl.value })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (x) {
+        if (!x.ok) { status(apiError(x.d, 'Save failed.'), false); return; }
+        status('Saved. Start a fresh chat on that business\u2019s page and it answers from this text now.', true);
+      })
+      .catch(function () { status('Could not reach the assistant service.', false); });
+  });
+
+  document.getElementById('createBtn').addEventListener('click', function () {
+    var name = document.getElementById('newName').value.trim();
+    var out = document.getElementById('createOut');
+    if (!pinEl.value.trim()) { out.textContent = 'Enter the edit PIN first.'; return; }
+    if (!name) { out.textContent = 'Give the business a name first.'; return; }
+    out.textContent = 'Creating...';
+    fetch(BASE + '/api/context/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Edit-Pin': pinEl.value.trim() },
+      body: JSON.stringify({ name: name })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (x) {
+        if (!x.ok) { out.textContent = apiError(x.d, 'Create failed.'); return; }
+        out.innerHTML = '';
+        var p = document.createElement('p');
+        p.textContent = 'Created: ' + x.d.tenant_id + '. Its widget snippet (paste it into a page, then chat):';
+        var code = document.createElement('code');
+        code.className = 'snippet';
+        code.textContent = x.d.snippet;
+        out.appendChild(p);
+        out.appendChild(code);
+        var opt = document.createElement('option');
+        opt.value = x.d.widget_key;
+        opt.textContent = name + ' (new)';
+        bizSel.appendChild(opt);
+        bizSel.value = x.d.widget_key;
+        loadedFor = null;
+      })
+      .catch(function () { out.textContent = 'Could not reach the assistant service.'; });
+  });
+</script>
+</body>
+</html>
