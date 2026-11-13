@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS conversations (
     status           text NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'handed_over', 'closed')),
     summary          text,               -- rolling summary of messages older than the history window
     page             jsonb,              -- web only: what the visitor is looking at
+    alerted_at       timestamptz,        -- when the owner was last told about this chat
     last_message_at  timestamptz NOT NULL DEFAULT now(),
     created_at       timestamptz NOT NULL DEFAULT now(),
     UNIQUE (business_id, channel, contact_id)
@@ -59,6 +60,8 @@ CREATE TABLE IF NOT EXISTS leads (
     name             text,
     phone            text,
     need             text,
+    email            text,
+    company          text,
     status           text NOT NULL DEFAULT 'new',
     created_at       timestamptz NOT NULL DEFAULT now(),
     updated_at       timestamptz NOT NULL DEFAULT now()
@@ -75,3 +78,8 @@ CREATE TABLE IF NOT EXISTS events (
     created_at   timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS events_business_idx ON events (business_id, created_at DESC);
+
+-- Upgrades for databases created before a column existed.
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS alerted_at timestamptz;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS email text;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS company text;

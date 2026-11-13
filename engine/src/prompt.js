@@ -17,7 +17,7 @@ Rules:
 Answer with JSON only, in this shape:
 {"reply": "text sent to the customer",
  "needs_human": false,
- "lead": {"name": null, "phone": null, "need": null},
+ "lead": {"name": null, "company": null, "phone": null, "email": null, "need": null},
  "summary": "two or three sentences covering the whole conversation so far"}
 Fill lead fields only with what the customer actually said.`;
 

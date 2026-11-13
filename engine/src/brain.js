@@ -36,16 +36,22 @@ async function handle(msg, deps = { model }) {
   }
 
   const handover = answer.needs_human === true && conversation.status !== 'handed_over';
+  const lead = answer.lead || {};
+  const hasContact = !!(lead.phone || lead.email);
+  // Tell the owner once when contact details first appear, and again on a handover.
+  const alertNow = handover || (hasContact && !conversation.alerted_at);
   await store.finishTurn({
     conversation,
     reply: answer.reply,
     summary: answer.summary,
     lead: answer.lead,
     handover,
+    alerted: alertNow, // marked before sending, so a quick next message cannot alert twice
   });
 
-  if (handover) {
-    alerts.ownerAlert(business, conversation, answer).catch((e) => console.error(`[${business.id}] alert failed: ${e.message}`));
+  if (alertNow) {
+    const transcript = [...conversation.history, { role: 'assistant', body: answer.reply }];
+    alerts.ownerAlert(business, conversation, answer, { handover, transcript }).catch((e) => console.error(`[${business.id}] alert failed: ${e.message}`));
   }
   return { reply: answer.reply, handedOver: handover || conversation.status === 'handed_over' };
 }

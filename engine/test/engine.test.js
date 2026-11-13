@@ -27,7 +27,7 @@ test.before(async () => {
   server = http.createServer(handler).listen(0);
   base = `http://127.0.0.1:${server.address().port}`;
 });
-test.after(() => server.close());
+test.after(() => { server.closeAllConnections(); server.close(); });
 
 const admin = (p, method, body) =>
   fetch(base + p, { method, headers: { Authorization: 'Bearer admin-test-token', 'Content-Type': 'application/json' }, body: body && JSON.stringify(body) }).then((r) => r.json().then((j) => ({ status: r.status, j })));
@@ -96,4 +96,27 @@ test('domain rules', () => {
   assert.ok(domainAllowed(['zeliks.tech'], 'zeliks.tech'));
   assert.ok(!domainAllowed(['zeliks.tech'], 'evilzeliks.tech'));
   assert.ok(!domainAllowed(['.zeliks.tech'], 'evilzeliks.tech'));
+});
+
+test('a new lead is sent once to the owner webhook with the full chat', async () => {
+  const got = [];
+  const hook = http.createServer((req, res) => {
+    let b = ''; req.on('data', (c) => (b += c)); req.on('end', () => { got.push({ secret: req.headers['x-zeliks-secret'], body: JSON.parse(b) }); res.end('ok'); });
+  }).listen(0);
+  await store.saveBusiness({ id: 'cafe-one', settings: { owner_alert: { webhook_url: `http://127.0.0.1:${hook.address().port}/lead`, webhook_secret: 's3' } } });
+  const msg = { businessId: 'cafe-one', channel: 'web', contactId: 'a'.repeat(48) };
+  replies.push(() => JSON.stringify({ reply: 'Hi! What is your name?', needs_human: false, lead: {} }));
+  await brain.handle({ ...msg, text: 'I want a website' });
+  replies.push(() => JSON.stringify({ reply: 'Thanks Mona, we will message you today.', needs_human: false, lead: { name: 'Mona', phone: '+96890000000', need: 'website' }, summary: 'Mona wants a website' }));
+  await brain.handle({ ...msg, text: 'Mona, +96890000000' });
+  replies.push(() => JSON.stringify({ reply: 'Noted.', needs_human: false, lead: { phone: '+96890000000' } }));
+  await brain.handle({ ...msg, text: 'thanks' });
+  await new Promise((r) => setTimeout(r, 200));
+  hook.closeAllConnections();
+  hook.close();
+  assert.equal(got.length, 1);
+  assert.equal(got[0].secret, 's3');
+  assert.equal(got[0].body.lead.name, 'Mona');
+  assert.equal(got[0].body.reason, 'new_lead');
+  assert.match(got[0].body.transcript, /Customer: I want a website[\s\S]*Assistant: Thanks Mona/);
 });

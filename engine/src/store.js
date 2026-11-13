@@ -36,7 +36,8 @@ async function findChannel(kind, externalId) {
 async function saveBusiness({ id, name, timezone, facts, settings }) {
   const r = await db().query(
     `INSERT INTO businesses (id, name, timezone, facts, settings)
-     VALUES ($1, $2, COALESCE($3, 'Asia/Muscat'), COALESCE($4, ''), COALESCE($5, '{}'::jsonb))
+     VALUES ($1, COALESCE($2, (SELECT name FROM businesses WHERE id = $1)),
+             COALESCE($3, 'Asia/Muscat'), COALESCE($4, ''), COALESCE($5, '{}'::jsonb))
      ON CONFLICT (id) DO UPDATE SET
        name = COALESCE($2, businesses.name),
        timezone = COALESCE($3, businesses.timezone),
@@ -98,7 +99,7 @@ async function startTurn({ businessId, channel, contactId, text, page }) {
 }
 
 // Stores the reply and everything the model learned, in one statement.
-async function finishTurn({ conversation, reply, summary, lead, handover }) {
+async function finishTurn({ conversation, reply, summary, lead, handover, alerted }) {
   await db().query(
     `WITH m AS (
        INSERT INTO messages (conversation_id, role, body) VALUES ($1, 'assistant', $2)
@@ -106,16 +107,19 @@ async function finishTurn({ conversation, reply, summary, lead, handover }) {
      c AS (
        UPDATE conversations SET
          summary = COALESCE($3, summary),
-         status = CASE WHEN $4 THEN 'handed_over' ELSE status END
+         status = CASE WHEN $4 THEN 'handed_over' ELSE status END,
+         alerted_at = CASE WHEN $13 THEN now() ELSE alerted_at END
        WHERE id = $1
      ),
      l AS (
-       INSERT INTO leads (business_id, conversation_id, name, phone, need)
-       SELECT $5, $1, $6, $7, $8 WHERE $9
+       INSERT INTO leads (business_id, conversation_id, name, phone, need, email, company)
+       SELECT $5, $1, $6, $7, $8, $11, $12 WHERE $9
        ON CONFLICT (conversation_id) DO UPDATE SET
          name = COALESCE(EXCLUDED.name, leads.name),
          phone = COALESCE(EXCLUDED.phone, leads.phone),
          need = COALESCE(EXCLUDED.need, leads.need),
+         email = COALESCE(EXCLUDED.email, leads.email),
+         company = COALESCE(EXCLUDED.company, leads.company),
          updated_at = now()
      )
      INSERT INTO events (business_id, kind, ref, payload)
@@ -129,8 +133,11 @@ async function finishTurn({ conversation, reply, summary, lead, handover }) {
       lead?.name || null,
       lead?.phone || null,
       lead?.need || null,
-      !!(lead && (lead.name || lead.phone || lead.need)),
+      !!(lead && (lead.name || lead.phone || lead.need || lead.email || lead.company)),
       JSON.stringify({ channel: conversation.channel, contact: conversation.contact_id }),
+      lead?.email || null,
+      lead?.company || null,
+      !!alerted,
     ]
   );
 }
