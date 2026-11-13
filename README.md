@@ -153,23 +153,30 @@ tests/conversations.md      scripted conversations with pass criteria
 6. Run through `tests/conversations.md` against the new pack before calls
    it live. A pack does not go live on a workflow change alone.
 
+## Live today (13 Nov 2026)
+
+The website door runs as its own small Node service, `website-agent/`,
+deployed on the VPS at `/docker/zeliks-chat` behind Traefik at
+`https://n8n.moodtech.cloud/zeliks-chat`. It was built on the server by
+Muse and copied into this repo on 13 Nov 2026 so the repo matches what runs.
+
+- `website-agent/server.js`: widget config, session and chat API, owner
+  context editor routes (PIN protected), demo pages.
+- `website-agent/widget.js`: the one-tag widget any site can install.
+- `website-agent/lib/`: prompt assembly, model calls (Gemini), database.
+- `website-agent/db/migrate_phase1.sql`: the tables it added
+  (`widget_keys`, context columns).
+- `website-agent/docker-compose.server.yml`: the compose file on the server.
+- Each business's widget key works only on the domains listed in its pack
+  (`widget.allowed_domains`).
+- Secrets (database URL, Gemini key, edit PIN, Google service account) live
+  only in `/docker/zeliks-chat/.env` and `secrets/` on the server, never here.
+
+Live businesses: `zeliks`, `luxe-locks-salon`, `hartwell-grey-estates`.
+
 ## Not yet built
 
-- **Runtime placement.** Where the isolated n8n instance and Postgres live.
-  Deliberately untouched in this phase: no server changes, no new services.
-- **Telegram door.** The bot attaches to `workflows/chat_entry.json`. Needs
-  a bot token from the owner.
-- **Website doors.** The demo door is just configuration (the `@n8n/chat`
-  widget against the entry webhook). The standard client door, a small
-  custom widget per client with their branding, quick-reply buttons, and
-  booking cards, is designed for but not built. Both post to the same
-  normalized contract, and the engine holds all conversation state in
-  Postgres, so neither door needs the other's code.
-- **Vertex AI wiring.** The AI agent's model (Gemini via Vertex AI) plugs
-  into clearly labelled placeholder nodes in the workflows. No credentials
-  exist in this repo and none should ever be committed.
-- **Sheets view.** The read-only Google Sheets view of the register for
-  clients. Optional, later, and never a data store.
-- **Owner alert delivery.** The alert step exists in the booking workflow
-  and writes to the register. The channel the owner actually receives it on
-  is chosen per business in the runtime phase.
+- **WhatsApp and Instagram doors** on the shared webhook contract.
+- **Telegram door.**
+- **Sheets view** (optional, read-only).
+- **Owner alert delivery** channel per business.

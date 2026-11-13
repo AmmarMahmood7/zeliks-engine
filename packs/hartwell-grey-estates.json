@@ -1,0 +1,329 @@
+{
+  "business": {
+    "address": "14 Mill Road, Cambridge",
+    "area": "Cambridge",
+    "email": "hello@hartwellandgrey.example",
+    "name": "Hartwell & Grey Estate Agents",
+    "phone": "+44 1223 555 014",
+    "timezone": "Europe/London",
+    "type": "property agency",
+    "website": "hartwellandgrey.example"
+  },
+  "currency": "GBP",
+  "faqs": [
+    {
+      "answer": "No. Viewings are free, and there is no obligation afterwards.",
+      "question": "Do viewings cost anything?"
+    },
+    {
+      "answer": "Cambridge and its neighbourhoods, including Chesterton, Trumpington, Cherry Hinton, Newnham, Romsey, Arbury, and the Milton Road area.",
+      "question": "Which areas do you cover?"
+    },
+    {
+      "answer": "Yes. A valuation visit is free and comes with no obligation. You get a written market appraisal afterwards, and whether you sell with us is entirely your choice.",
+      "question": "Is a valuation really free?"
+    },
+    {
+      "answer": "Our selling fee starts from 1% + VAT of the sale price. The exact fee is confirmed in writing before you instruct us, so there are no surprises later.",
+      "question": "What do you charge for selling a house?"
+    },
+    {
+      "answer": "We are not mortgage advisers ourselves, but we can introduce you to an independent mortgage broker who can look across the whole market for you.",
+      "question": "Can you help with a mortgage?"
+    },
+    {
+      "answer": "Tell us your offer and we pass it to the seller within one working day. We let you know the seller's answer as soon as we have it, and we will help you negotiate.",
+      "question": "How do offers work?"
+    },
+    {
+      "answer": "Chains are normal in Cambridge. We track every link in your chain and chase each party regularly, so your move does not stall without you knowing why.",
+      "question": "What if I am in a chain?"
+    },
+    {
+      "answer": "Usually the same working day or the next one, depending on the seller's diary. Tell us when suits you and we will arrange it.",
+      "question": "How quickly can I see a property?"
+    },
+    {
+      "answer": "No, we are sales only. We sell homes; we do not let or manage rental property.",
+      "question": "Do you handle lettings or rentals?"
+    },
+    {
+      "answer": "Your message is still captured. We pick it up first thing the next morning and follow up with you then.",
+      "question": "What happens if I enquire outside opening hours?"
+    }
+  ],
+  "hours": {
+    "notes": "Closed on Sundays and UK bank holidays.",
+    "weekly": {
+      "fri": {
+        "close": "18:00",
+        "open": "09:00"
+      },
+      "mon": {
+        "close": "18:00",
+        "open": "09:00"
+      },
+      "sat": {
+        "close": "16:00",
+        "open": "09:00"
+      },
+      "sun": null,
+      "thu": {
+        "close": "18:00",
+        "open": "09:00"
+      },
+      "tue": {
+        "close": "18:00",
+        "open": "09:00"
+      },
+      "wed": {
+        "close": "18:00",
+        "open": "09:00"
+      }
+    }
+  },
+  "listings": [
+    {
+      "area": "Arbury",
+      "baths": 1,
+      "beds": 1,
+      "highlight": "First-floor flat with a long lease, a short walk from the shops on Arbury Court.",
+      "id": "arbury-1-bed-flat",
+      "price": 240000,
+      "tenure": "leasehold",
+      "title": "One-bedroom first-floor flat",
+      "type": "flat",
+      "url": "https://hartwellandgrey.example/properties/arbury-1-bed-flat"
+    },
+    {
+      "area": "Chesterton",
+      "baths": 1,
+      "beds": 2,
+      "highlight": "Top-floor apartment with a balcony, five minutes from the river and the towpath.",
+      "id": "chesterton-2-bed-flat",
+      "price": 295000,
+      "tenure": "leasehold",
+      "title": "Two-bedroom apartment near the river",
+      "type": "flat",
+      "url": "https://hartwellandgrey.example/properties/chesterton-2-bed-flat"
+    },
+    {
+      "area": "Romsey",
+      "baths": 1,
+      "beds": 2,
+      "highlight": "Victorian terrace on a quiet street off Mill Road, with a south-facing garden.",
+      "id": "romsey-2-bed-terrace",
+      "price": 360000,
+      "tenure": "freehold",
+      "title": "Two-bedroom Victorian terrace",
+      "type": "terraced",
+      "url": "https://hartwellandgrey.example/properties/romsey-2-bed-terrace"
+    },
+    {
+      "area": "Cherry Hinton",
+      "baths": 1,
+      "beds": 2,
+      "highlight": "Single-storey living with a level garden, close to the shops on Cherry Hinton High Street.",
+      "id": "cherry-hinton-2-bed-bungalow",
+      "price": 395000,
+      "tenure": "freehold",
+      "title": "Two-bedroom detached bungalow",
+      "type": "bungalow",
+      "url": "https://hartwellandgrey.example/properties/cherry-hinton-2-bed-bungalow"
+    },
+    {
+      "area": "Cherry Hinton",
+      "baths": 1,
+      "beds": 3,
+      "highlight": "Extended kitchen-diner and a downstairs cloakroom, in the catchment for good primary schools.",
+      "id": "cherry-hinton-3-bed-terrace",
+      "price": 425000,
+      "tenure": "freehold",
+      "title": "Three-bedroom terraced house",
+      "type": "terraced",
+      "url": "https://hartwellandgrey.example/properties/cherry-hinton-3-bed-terrace"
+    },
+    {
+      "area": "Milton Road area",
+      "baths": 1,
+      "beds": 3,
+      "highlight": "Bay-fronted semi with off-street parking, an easy cycle ride from the Science Park.",
+      "id": "milton-road-3-bed-semi",
+      "price": 465000,
+      "tenure": "freehold",
+      "title": "Three-bedroom semi-detached house",
+      "type": "semi-detached",
+      "url": "https://hartwellandgrey.example/properties/milton-road-3-bed-semi"
+    },
+    {
+      "area": "Trumpington",
+      "baths": 2,
+      "beds": 3,
+      "highlight": "Modern semi near the guided busway stop, with an en suite to the main bedroom.",
+      "id": "trumpington-3-bed-semi",
+      "price": 485000,
+      "tenure": "freehold",
+      "title": "Three-bedroom semi-detached family home",
+      "type": "semi-detached",
+      "url": "https://hartwellandgrey.example/properties/trumpington-3-bed-semi"
+    },
+    {
+      "area": "Newnham",
+      "baths": 2,
+      "beds": 3,
+      "highlight": "Detached house on a quiet cul-de-sac, walking distance to Lammas Land and the river.",
+      "id": "newnham-3-bed-detached",
+      "price": 685000,
+      "tenure": "freehold",
+      "title": "Three-bedroom detached house",
+      "type": "detached",
+      "url": "https://hartwellandgrey.example/properties/newnham-3-bed-detached"
+    },
+    {
+      "area": "Trumpington",
+      "baths": 3,
+      "beds": 4,
+      "highlight": "Detached family house with a double garage, close to Trumpington Meadows primary school.",
+      "id": "trumpington-4-bed-detached",
+      "price": 725000,
+      "tenure": "freehold",
+      "title": "Four-bedroom detached house",
+      "type": "detached",
+      "url": "https://hartwellandgrey.example/properties/trumpington-4-bed-detached"
+    },
+    {
+      "area": "Newnham",
+      "baths": 2,
+      "beds": 4,
+      "highlight": "Semi-detached house on a leafy street, with a large back garden and a home office in the loft.",
+      "id": "newnham-4-bed-semi",
+      "price": 795000,
+      "tenure": "freehold",
+      "title": "Four-bedroom semi-detached house",
+      "type": "semi-detached",
+      "url": "https://hartwellandgrey.example/properties/newnham-4-bed-semi"
+    },
+    {
+      "area": "Newnham",
+      "baths": 4,
+      "beds": 5,
+      "highlight": "Substantial detached home with five bedrooms, a garden room, and parking for three cars.",
+      "id": "newnham-5-bed-detached",
+      "price": 1150000,
+      "tenure": "freehold",
+      "title": "Five-bedroom detached family home",
+      "type": "detached",
+      "url": "https://hartwellandgrey.example/properties/newnham-5-bed-detached"
+    }
+  ],
+  "owner_alerts": {
+    "channel": "telegram",
+    "target": "OWNER_CHAT_ID_PLACEHOLDER"
+  },
+  "payment_notes": "Viewings and valuations are free. If you sell with us, our fee is confirmed in writing before you instruct us and is payable on completion of the sale.",
+  "policies": {
+    "cancellation": "If you cannot make a viewing or a valuation, tell us as early as you can and we will rebook it free of charge.",
+    "late_arrival": "If you are running late for a viewing, call ahead. We hold the appointment for 15 minutes.",
+    "walk_ins": "You are welcome to pop into the office without an appointment for a chat. Property viewings are by appointment, so the seller can be ready for you."
+  },
+  "services": [
+    {
+      "bookable": true,
+      "description": "A guided viewing of a property for sale, with a member of the sales team on hand for questions.",
+      "duration_minutes": 45,
+      "id": "property-viewing",
+      "name": "Property Viewing",
+      "price": 0
+    },
+    {
+      "bookable": true,
+      "description": "A free visit to your home with a written market appraisal afterwards. No obligation to sell with us.",
+      "duration_minutes": 60,
+      "id": "home-valuation",
+      "name": "Home Valuation",
+      "price": 0
+    }
+  ],
+  "tenant_id": "hartwell-grey-estates",
+  "tone_notes": "Professional and plain-spoken, like a good local agent. Short answers, exact figures, no pressure and no hype. Prices always in pounds, quoted exactly as listed.",
+  "tools": {
+    "answer": true,
+    "booking": true,
+    "evening_summary": true,
+    "follow_up": true,
+    "lead_capture": true,
+    "owner_alert": true
+  },
+  "pack_version": 2,
+  "staff": [
+    {
+      "name": "Eleanor Hartwell",
+      "role": "Director and senior agent",
+      "specialties": [
+        "Home Valuation",
+        "Newnham",
+        "Trumpington"
+      ]
+    },
+    {
+      "name": "Tom Grey",
+      "role": "Sales negotiator",
+      "specialties": [
+        "Property Viewing",
+        "Offers",
+        "Chains"
+      ]
+    }
+  ],
+  "languages": {
+    "supported": [
+      "English"
+    ],
+    "default": "English"
+  },
+  "role_card": {
+    "goal": "Answer questions about Hartwell & Grey properties, areas and fees, and capture the details of anyone who wants a viewing, a valuation or a call back.",
+    "qualification_questions": [
+      "Which property or area are you interested in?",
+      "Are you looking to buy, or do you have a home to sell?",
+      "What is the best phone number or email for us to reach you?"
+    ],
+    "handover_rules": [
+      "The visitor asks to speak to a human",
+      "The visitor wants to make or negotiate an offer",
+      "You cannot answer the question from the facts given"
+    ]
+  },
+  "rules": [
+    "Only talk about the properties listed in these facts. Never invent a property, a price or a feature.",
+    "This website chat cannot book viewings. If a visitor wants a viewing or a valuation, take their name and phone number and tell them the team will call to arrange it."
+  ],
+  "knowledge": [
+    {
+      "title": "The office",
+      "text": "The office is at 14 Mill Road, Cambridge. There is a small customer car park behind the office, reached from the lane beside the building.",
+      "tags": [
+        "office",
+        "parking",
+        "directions"
+      ]
+    }
+  ],
+  "widget": {
+    "greeting": "Hello, this is Hartwell & Grey. Ask me about any of our Cambridge properties, viewings or valuations.",
+    "primary_color": "#22364A",
+    "position": "bottom-right",
+    "allowed_domains": [
+      "demos.zeliks.tech",
+      ".zeliks-demos.pages.dev",
+      ".zeliks-demos-git.pages.dev",
+      "n8n.moodtech.cloud"
+    ]
+  },
+  "owner": {
+    "name": "Eleanor Hartwell",
+    "email": "hello@hartwellandgrey.example",
+    "alert_channel": "telegram",
+    "alert_target": "OWNER_CHAT_ID_PLACEHOLDER"
+  }
+}

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Luxe Locks Salon &amp; Spa | Assistant demo</title>
+<meta name="description" content="Demo page for the Zeliks website assistant: a salon page where the chat answers from the salon's own facts.">
+<style>
+  :root { --ink:#2b2118; --paper:#faf6f0; --accent:#8C5A3A; --line:#e5d9c8; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:Georgia,'Times New Roman',serif; background:var(--paper); color:var(--ink); }
+  header { padding:56px 20px 30px; text-align:center; border-bottom:1px solid var(--line); }
+  header h1 { font-size:40px; margin:0 0 8px; font-weight:normal; letter-spacing:.5px; }
+  header p { margin:0; color:#6d5b45; font-size:17px; }
+  main { max-width:820px; margin:0 auto; padding:30px 20px 60px; }
+  h2 { font-size:24px; font-weight:normal; margin:36px 0 6px; }
+  .sub { color:#6d5b45; margin:0 0 18px; font-size:15px; }
+  .service { display:flex; justify-content:space-between; gap:16px; align-items:baseline; padding:14px 0; border-bottom:1px solid var(--line); }
+  .service .name { font-size:18px; }
+  .service .desc { color:#6d5b45; font-size:14.5px; margin-top:3px; max-width:520px; }
+  .service .meta { text-align:right; white-space:nowrap; }
+  .service .price { font-size:18px; }
+  .service .dur { color:#6d5b45; font-size:13.5px; display:block; margin-top:2px; }
+  button.ask { margin-top:8px; background:var(--accent); color:#fff; border:none; border-radius:6px; padding:7px 12px; font-size:13.5px; cursor:pointer; font-family:inherit; }
+  button.ask:hover { opacity:.9; }
+  .hours { columns:2; font-size:15.5px; line-height:1.9; }
+  footer { border-top:1px solid var(--line); padding:22px 20px 90px; text-align:center; color:#6d5b45; font-size:14px; }
+  .demo-note { background:#f1e8da; border:1px solid var(--line); border-radius:8px; padding:14px 16px; font-size:14.5px; line-height:1.55; }
+  @media (max-width:560px){ .hours{columns:1} header h1{font-size:32px} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Luxe Locks Salon &amp; Spa</h1>
+  <p>Hair salon and spa, South Congress, Austin</p>
+</header>
+<main>
+  <div class="demo-note">
+    This is a demo page for the Zeliks website assistant. The chat in the
+    corner answers from this salon's own facts: its services, prices,
+    hours and policies. Use the ask button on a service and then ask the
+    chat “how much is this?”; it knows which service you mean.
+  </div>
+
+  <h2>Services and prices</h2>
+  <p class="sub">Tap a service’s ask button and the assistant answers about that service.</p>
+
+  <div class="service"><div><div class="name">Women's Haircut</div><div class="desc">Cut, wash, and finish with a blow-dry style.</div></div><div class="meta"><span class="price">$65</span><span class="dur">about 60 minutes</span><button class="ask" onclick="askService('Women\'s Haircut', 65)">Ask about the women’s cut</button></div></div>
+  <div class="service"><div><div class="name">Men's Haircut</div><div class="desc">Cut and finish. Wash included.</div></div><div class="meta"><span class="price">$45</span><span class="dur">about 45 minutes</span><button class="ask" onclick="askService('Men\'s Haircut', 45)">Ask about the men’s cut</button></div></div>
+  <div class="service"><div><div class="name">Balayage with Toner</div><div class="desc">Hand-painted highlights with toner and a gloss finish. Exact price confirmed after a quick look at hair length.</div></div><div class="meta"><span class="price">$185</span><span class="dur">about 150 minutes</span><button class="ask" onclick="askService('Balayage with Toner', 185)">Ask about balayage</button></div></div>
+  <div class="service"><div><div class="name">Full Color</div><div class="desc">One all-over color, roots to ends, with a gloss finish.</div></div><div class="meta"><span class="price">$120</span><span class="dur">about 120 minutes</span><button class="ask" onclick="askService('Full Color', 120)">Ask about full color</button></div></div>
+  <div class="service"><div><div class="name">Keratin Treatment</div><div class="desc">Smoothing keratin treatment. Results last 3 to 5 months. A $50 deposit is taken at booking and comes off the final bill.</div></div><div class="meta"><span class="price">$240</span><span class="dur">about 180 minutes</span><button class="ask" onclick="askService('Keratin Treatment', 240)">Ask about keratin</button></div></div>
+  <div class="service"><div><div class="name">Blowout</div><div class="desc">Wash and a styled blowout, smooth or with waves.</div></div><div class="meta"><span class="price">$55</span><span class="dur">about 45 minutes</span><button class="ask" onclick="askService('Blowout', 55)">Ask about a blowout</button></div></div>
+  <div class="service"><div><div class="name">Deep Conditioning Treatment</div><div class="desc">Repair treatment for dry or damaged hair. Can be added to any other service or booked on its own.</div></div><div class="meta"><span class="price">$40</span><span class="dur">about 30 minutes</span><button class="ask" onclick="askService('Deep Conditioning Treatment', 40)">Ask about deep conditioning</button></div></div>
+  <div class="service"><div><div class="name">Kids Haircut (Under 12)</div><div class="desc">For children under 12. A parent or guardian stays in the salon during the cut.</div></div><div class="meta"><span class="price">$35</span><span class="dur">about 30 minutes</span><button class="ask" onclick="askService('Kids Haircut (Under 12)', 35)">Ask about kids’ cuts</button></div></div>
+
+  <h2>Opening hours</h2>
+  <div class="hours">
+    Monday: closed<br>
+    Tuesday: 9:00 AM to 7:00 PM<br>
+    Wednesday: 9:00 AM to 7:00 PM<br>
+    Thursday: 9:00 AM to 7:00 PM<br>
+    Friday: 9:00 AM to 7:00 PM<br>
+    Saturday: 9:00 AM to 6:00 PM<br>
+    Sunday: 10:00 AM to 5:00 PM
+  </div>
+
+  <h2>Find us</h2>
+  <p class="sub">1214 South Congress Ave, Austin, TX 78704 · +1 (512) 555-0148 · hello@luxelocksaustin.example</p>
+</main>
+<footer>
+  Demo page for the Zeliks website assistant. Same engine as every other
+  business; only the facts change.
+</footer>
+
+<script>
+  window.ZELIKS_PACKET = { page: { title: 'Luxe Locks Salon & Spa, services and prices' } };
+  function askService(name, price) {
+    window.ZeliksWidget.setPacket({
+      item: { kind: 'service', name: name, price: price },
+      page: { title: 'Luxe Locks Salon & Spa, viewing ' + name }
+    });
+    window.ZeliksWidget.open();
+  }
+</script>
+<script src="https://n8n.moodtech.cloud/zeliks-chat/widget.js" data-zeliks-key="wk_50c936ed66238e440e071767f174f582" async></script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hartwell &amp; Grey Estate Agents | Assistant demo</title>
+<meta name="description" content="Demo page for the Zeliks website assistant: a property listing page where the chat answers from the agent's own listings.">
+<style>
+  :root { --ink:#1d2733; --paper:#f7f8f7; --accent:#22364A; --line:#dde2e6; --soft:#5c6a76; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; background:var(--paper); color:var(--ink); }
+  header { padding:48px 20px 26px; text-align:center; border-bottom:1px solid var(--line); background:#fff; }
+  header h1 { font-size:34px; margin:0 0 6px; font-weight:650; }
+  header p { margin:0; color:var(--soft); font-size:16px; }
+  main { max-width:880px; margin:0 auto; padding:26px 20px 60px; }
+  .demo-note { background:#eef2f5; border:1px solid var(--line); border-radius:8px; padding:14px 16px; font-size:14.5px; line-height:1.55; }
+  .shortlist-bar { margin:18px 0 4px; padding:12px 16px; background:#fff; border:1px solid var(--line); border-radius:8px; font-size:14.5px; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:18px; }
+  @media (max-width:640px){ .grid{grid-template-columns:1fr} }
+  .card { background:#fff; border:1px solid var(--line); border-radius:10px; padding:18px; }
+  .card h3 { margin:0 0 4px; font-size:18px; }
+  .card .area { color:var(--soft); font-size:14px; margin:0 0 8px; }
+  .card .price { font-size:20px; font-weight:650; margin:6px 0; }
+  .card .facts { color:var(--soft); font-size:14px; }
+  .card .hl { font-size:14.5px; line-height:1.5; margin:8px 0 12px; }
+  .card .row { display:flex; gap:8px; flex-wrap:wrap; }
+  button.ask { background:var(--accent); color:#fff; border:none; border-radius:6px; padding:8px 12px; font-size:13.5px; cursor:pointer; }
+  button.short { background:#fff; color:var(--accent); border:1px solid var(--accent); border-radius:6px; padding:8px 12px; font-size:13.5px; cursor:pointer; }
+  button.short.on { background:#e4ebf1; }
+  footer { border-top:1px solid var(--line); padding:22px 20px 90px; text-align:center; color:var(--soft); font-size:14px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Hartwell &amp; Grey Estate Agents</h1>
+  <p>Homes for sale in Cambridge</p>
+</header>
+<main>
+  <div class="demo-note">
+    This is a demo page for the Zeliks website assistant. The chat in the
+    corner answers from this agent's own listings: the properties below,
+    their prices and areas, plus viewings and valuations. Ask it about a
+    property, or shortlist a few and ask what is in your shortlist.
+  </div>
+
+  <div class="shortlist-bar">
+    <span id="sl-text">Your shortlist is empty.</span>
+    <span id="sl-total"></span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</main>
+<footer>
+  14 Mill Road, Cambridge · +44 1223 555 014 · Viewings and valuations are free.<br>
+  Demo page for the Zeliks website assistant. Same engine as every other business; only the facts change.
+</footer>
+
+<script>
+  var PROPERTIES = [
+    { id:'arbury-1-bed-flat', title:'One-bedroom first-floor flat', area:'Arbury', type:'flat', beds:1, baths:1, price:240000, tenure:'leasehold', highlight:'First-floor flat with a long lease, a short walk from the shops on Arbury Court.', ask:'Ask about the 1-bed in Arbury' },
+    { id:'chesterton-2-bed-flat', title:'Two-bedroom apartment near the river', area:'Chesterton', type:'flat', beds:2, baths:1, price:295000, tenure:'leasehold', highlight:'Top-floor apartment with a balcony, five minutes from the river and the towpath.', ask:'Ask about the 2-bed in Chesterton' },
+    { id:'romsey-2-bed-terrace', title:'Two-bedroom Victorian terrace', area:'Romsey', type:'terraced', beds:2, baths:1, price:360000, tenure:'freehold', highlight:'Victorian terrace on a quiet street off Mill Road, with a south-facing garden.', ask:'Ask about the 2-bed in Romsey' },
+    { id:'cherry-hinton-2-bed-bungalow', title:'Two-bedroom detached bungalow', area:'Cherry Hinton', type:'bungalow', beds:2, baths:1, price:395000, tenure:'freehold', highlight:'Single-storey living with a level garden, close to the shops on Cherry Hinton High Street.', ask:'Ask about the bungalow in Cherry Hinton' },
+    { id:'cherry-hinton-3-bed-terrace', title:'Three-bedroom terraced house', area:'Cherry Hinton', type:'terraced', beds:3, baths:1, price:425000, tenure:'freehold', highlight:'Extended kitchen-diner and a downstairs cloakroom, in the catchment for good primary schools.', ask:'Ask about the 3-bed terrace in Cherry Hinton' },
+    { id:'milton-road-3-bed-semi', title:'Three-bedroom semi-detached house', area:'Milton Road area', type:'semi-detached', beds:3, baths:1, price:465000, tenure:'freehold', highlight:'Bay-fronted semi with off-street parking, an easy cycle ride from the Science Park.', ask:'Ask about the 3-bed near Milton Road' },
+    { id:'trumpington-3-bed-semi', title:'Three-bedroom semi-detached family home', area:'Trumpington', type:'semi-detached', beds:3, baths:2, price:485000, tenure:'freehold', highlight:'Modern semi near the guided busway stop, with an en suite to the main bedroom.', ask:'Ask about the 3-bed in Trumpington' },
+    { id:'newnham-3-bed-detached', title:'Three-bedroom detached house', area:'Newnham', type:'detached', beds:3, baths:2, price:685000, tenure:'freehold', highlight:'Detached house on a quiet cul-de-sac, walking distance to Lammas Land and the river.', ask:'Ask about the 3-bed in Newnham' },
+    { id:'trumpington-4-bed-detached', title:'Four-bedroom detached house', area:'Trumpington', type:'detached', beds:4, baths:3, price:725000, tenure:'freehold', highlight:'Detached family house with a double garage, close to Trumpington Meadows primary school.', ask:'Ask about the 4-bed in Trumpington' },
+    { id:'newnham-4-bed-semi', title:'Four-bedroom semi-detached house', area:'Newnham', type:'semi-detached', beds:4, baths:2, price:795000, tenure:'freehold', highlight:'Semi-detached house on a leafy street, with a large back garden and a home office in the loft.', ask:'Ask about the 4-bed in Newnham' },
+    { id:'newnham-5-bed-detached', title:'Five-bedroom detached family home', area:'Newnham', type:'detached', beds:5, baths:4, price:1150000, tenure:'freehold', highlight:'Substantial detached home with five bedrooms, a garden room, and parking for three cars.', ask:'Ask about the 5-bed in Newnham' }
+  ];
+  var shortlist = [];
+  function money(n){ return '£' + n.toLocaleString('en-GB'); }
+  function renderShortlist(){
+    var t = document.getElementById('sl-text');
+    var tot = document.getElementById('sl-total');
+    if (!shortlist.length) { t.textContent = 'Your shortlist is empty.'; tot.textContent = ''; return; }
+    t.textContent = 'Shortlisted: ' + shortlist.map(function(p){ return p.title + ' (' + p.area + ')'; }).join('; ');
+    tot.textContent = 'Total: ' + money(shortlist.reduce(function(a,p){ return a + p.price; }, 0));
+  }
+  var grid = document.getElementById('grid');
+  PROPERTIES.forEach(function(p){
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = '<h3></h3><p class="area"></p><div class="price"></div>' +
+      '<div class="facts"></div><p class="hl"></p>' +
+      '<div class="row"><button class="ask"></button><button class="short">Add to shortlist</button></div>';
+    card.querySelector('h3').textContent = p.title;
+    card.querySelector('.area').textContent = p.area + ', Cambridge';
+    card.querySelector('.price').textContent = money(p.price);
+    card.querySelector('.facts').textContent = p.beds + ' bed · ' + p.baths + ' bath · ' + p.type + ' · ' + p.tenure;
+    card.querySelector('.hl').textContent = p.highlight;
+    var askBtn = card.querySelector('.ask');
+    askBtn.textContent = p.ask;
+    askBtn.addEventListener('click', function(){
+      window.ZeliksWidget.setPacket({
+        item: { kind:'property', id:p.id, title:p.title, area:p.area, beds:p.beds, price:p.price },
+        page: { title: 'Hartwell & Grey, viewing ' + p.title + ' in ' + p.area }
+      });
+      window.ZeliksWidget.open();
+    });
+    var slBtn = card.querySelector('.short');
+    slBtn.addEventListener('click', function(){
+      var i = shortlist.indexOf(p);
+      if (i >= 0) { shortlist.splice(i,1); slBtn.textContent = 'Add to shortlist'; slBtn.classList.remove('on'); }
+      else { shortlist.push(p); slBtn.textContent = 'Shortlisted'; slBtn.classList.add('on'); }
+      renderShortlist();
+    });
+    grid.appendChild(card);
+  });
+  window.ZELIKS_PACKET = function(){
+    var pkt = { page: { title: 'Hartwell & Grey, Cambridge properties for sale' } };
+    if (shortlist.length) {
+      pkt.cart = shortlist.map(function(p){
+        return { kind:'property', id:p.id, title:p.title, area:p.area, beds:p.beds, price:p.price };
+      });
+    }
+    return pkt;
+  };
+</script>
+<script src="https://n8n.moodtech.cloud/zeliks-chat/widget.js" data-zeliks-key="wk_0f7154c18849c0bdef2079edfa9a15bb" async></script>
+</body>
+</html>
