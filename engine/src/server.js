@@ -9,6 +9,7 @@ const { send } = require('./http');
 const doors = [require('./doors/web'), require('./doors/meta'), require('./doors/telegram'), require('./admin')];
 
 const WIDGET_JS = fs.readFileSync(path.join(__dirname, '..', 'public', 'widget.js'));
+const PREVIEW = fs.readFileSync(path.join(__dirname, '..', 'public', 'preview.html'));
 
 async function handler(req, res) {
   const url = new URL(req.url, 'http://local');
@@ -18,6 +19,10 @@ async function handler(req, res) {
     if (req.method === 'GET' && p === '/widget.js') {
       res.writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'public, max-age=300' });
       return res.end(WIDGET_JS);
+    }
+    if (req.method === 'GET' && p === '/preview') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
+      return res.end(PREVIEW);
     }
     for (const door of doors) {
       if (await door.route(req, res, p, url)) return;

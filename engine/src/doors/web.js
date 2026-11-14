@@ -77,6 +77,7 @@ async function route(req, res, path) {
         tenant_id: b.id, business_name: b.name, greeting: greeting(b),
         primary_color: s.primary_color || '#333333', logo_url: s.logo_url || null,
         position: s.position || 'bottom-right',
+        variant: s.widget_variant || 'studio', theme: s.widget_theme || 'auto',
       }, cors(req));
     }
     return true;
