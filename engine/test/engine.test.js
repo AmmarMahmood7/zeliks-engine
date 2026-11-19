@@ -120,3 +120,80 @@ test('a new lead is sent once to the owner webhook with the full chat', async ()
   assert.equal(got[0].body.reason, 'new_lead');
   assert.match(got[0].body.transcript, /Customer: I want a website[\s\S]*Assistant: Thanks Mona/);
 });
+
+// Demo door (zeliks.tech /try)
+const demo = require('../src/doors/demo');
+const demoCall = (p, body, origin = 'https://zeliks.tech') =>
+  fetch(base + p, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then((r) => r.json().then((j) => ({ status: r.status, j })));
+
+test('demo: only our site can start one, and it needs real details', async () => {
+  assert.equal((await demoCall('/api/demo/start', { business_name: 'X', about: 'a salon' }, 'https://evil.com')).status, 403);
+  assert.equal((await demoCall('/api/demo/start', { business_name: '', about: 'a salon' })).status, 400);
+  assert.equal((await demoCall('/api/demo/start', { business_name: 'X', about: 'hi' })).status, 400);
+});
+
+test('demo: chat uses the visitor description and reports the lead', async () => {
+  const s = await demoCall('/api/demo/start', { business_name: 'Noor Salon', about: 'Hair salon in Al Khuwair, open every day' });
+  assert.equal(s.status, 200);
+  assert.match(s.j.demo_id, /^demo-[a-f0-9]{10}$/);
+  assert.equal(s.j.greeting, 'Hi, this is Noor Salon. How can I help?');
+
+  replies.push(({ system }) => {
+    assert.match(system, /Hair salon in Al Khuwair/);
+    assert.match(system, /Never invent prices/);
+    return JSON.stringify({ reply: 'Sure. Your name and number?', needs_human: true, lead: { name: 'Sara', phone: '+96891234567', need: 'haircut Friday' }, summary: 'Sara wants a haircut' });
+  });
+  const c = await demoCall('/api/demo/chat', { demo_id: s.j.demo_id, token: s.j.token, text: 'Haircut on Friday?' });
+  assert.equal(c.status, 200);
+  assert.equal(c.j.reply_text, 'Sure. Your name and number?');
+  assert.deepEqual(c.j.lead, { name: 'Sara', phone: '+96891234567', need: 'haircut Friday' });
+  assert.equal(c.j.ready, true);
+
+  assert.equal((await demoCall('/api/demo/chat', { demo_id: s.j.demo_id, token: 'x'.repeat(48), text: 'hi' })).status, 401);
+  assert.equal((await demoCall('/api/demo/chat', { demo_id: 'cafe-one', token: s.j.token, text: 'hi' })).status, 401);
+  const alerts = await store.db().query("SELECT count(*)::int n FROM events WHERE business_id = $1 AND kind LIKE 'owner_alert%' AND payload->'sent' <> '[]'::jsonb", [s.j.demo_id]);
+  assert.equal(alerts.rows[0].n, 0, 'demo leads must not reach any owner');
+});
+
+test('demo: message cap per demo', async () => {
+  const keep = demo.LIMITS.messagesPerDemo;
+  demo.LIMITS.messagesPerDemo = 1;
+  const s = await demoCall('/api/demo/start', { business_name: 'Cap Cafe', about: 'A small cafe in Muscat' });
+  assert.equal((await demoCall('/api/demo/chat', { demo_id: s.j.demo_id, token: s.j.token, text: 'hi' })).status, 200);
+  assert.equal((await demoCall('/api/demo/chat', { demo_id: s.j.demo_id, token: s.j.token, text: 'hi' })).status, 429);
+  demo.LIMITS.messagesPerDemo = keep;
+});
+
+test('demo: visitor address ignores a forged X-Forwarded-For', () => {
+  const req = (xff) => ({ headers: { 'x-forwarded-for': xff }, socket: { remoteAddress: '10.0.0.2' } });
+  const keep = demo.LIMITS.proxyHops;
+  demo.LIMITS.proxyHops = 0;
+  assert.equal(demo.clientIp(req('1.1.1.1')), '10.0.0.2');
+  demo.LIMITS.proxyHops = 1;
+  assert.equal(demo.clientIp(req('6.6.6.6, 203.0.113.9')), '203.0.113.9');
+  assert.equal(demo.clientIp(req('')), '10.0.0.2');
+  demo.LIMITS.proxyHops = keep;
+});
+
+test('demo: hourly caps per visitor and in total', async () => {
+  const keep = { ...demo.LIMITS };
+  demo.LIMITS.startsPerIpHour = 1000;
+  demo.LIMITS.startsTotalHour = 0;
+  assert.equal((await demoCall('/api/demo/start', { business_name: 'Busy', about: 'A busy shop in Sohar' })).status, 429);
+  demo.LIMITS.startsTotalHour = 1000;
+  demo.LIMITS.startsPerIpHour = 0;
+  assert.equal((await demoCall('/api/demo/start', { business_name: 'Busy', about: 'A busy shop in Sohar' })).status, 429);
+  Object.assign(demo.LIMITS, keep);
+});
+
+test('demo: old demos are deleted, real businesses never', async () => {
+  await store.saveBusiness({ id: 'demo-0000000000', name: 'Old demo', facts: 'x', settings: { demo: true } });
+  await store.saveBusiness({ id: 'demo-real-client', name: 'Looks like a demo', facts: 'x', settings: {} });
+  await store.db().query("UPDATE businesses SET created_at = now() - interval '30 days'");
+  await demo.cleanup(true);
+  const ids = (await store.db().query('SELECT id FROM businesses')).rows.map((r) => r.id);
+  assert.ok(!ids.includes('demo-0000000000'));
+  assert.ok(ids.includes('demo-real-client'));
+  assert.ok(ids.includes('cafe-one'));
+});

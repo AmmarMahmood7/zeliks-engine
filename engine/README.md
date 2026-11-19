@@ -24,6 +24,7 @@ the café's prices in that record and every channel answers with the new ones.
 | `src/doors/web.js` | The one-tag widget (same API as v1, so existing installs keep working) |
 | `src/doors/meta.js` | WhatsApp Cloud API and Instagram DMs, one webhook: `/meta` |
 | `src/doors/telegram.js` | Telegram bots: `/telegram/<bot id>` |
+| `src/doors/demo.js` | The zeliks.tech `/try` demo: a visitor describes a business and chats with it (`/api/demo/start`, `/api/demo/chat`) |
 | `src/admin.js` | Create businesses, edit facts, add channels (Bearer `ADMIN_TOKEN`) |
 | `src/alerts.js` | Tells the owner when a chat needs them (Telegram and/or a webhook, e.g. n8n) |
 | `db/schema.sql` | Six tables: businesses, channels, conversations, messages, leads, events |
@@ -54,6 +55,12 @@ curl -X POST $BASE/admin/businesses/cafe-one/channels -H "Authorization: Bearer 
 `DATABASE_URL`, `MODEL_PROVIDER` (`gemini`|`openai`), `MODEL_NAME`, `MODEL_API_KEY`,
 `MODEL_BASE_URL` (OpenAI-compatible only), `ADMIN_TOKEN`, `PUBLIC_BASE_URL`,
 `META_VERIFY_TOKEN`, `META_APP_SECRET`, `TELEGRAM_WEBHOOK_SECRET`, `ALERT_TELEGRAM_BOT_TOKEN`.
+
+Demo door (all optional): `DEMO_ORIGINS` (sites allowed to call it, default `zeliks.tech,www.zeliks.tech`),
+`DEMO_STARTS_PER_HOUR` (per visitor, default 6), `DEMO_STARTS_TOTAL_PER_HOUR` (everyone, default 60),
+`DEMO_MESSAGES` (per demo, default 30), `DEMO_KEEP_DAYS` (default 7),
+`TRUST_PROXY_HOPS` (proxies in front of the engine that add to `X-Forwarded-For`; default 0 uses the socket address).
+The demo is off when `ADMIN_TOKEN` is not set, because it signs demo tokens with it.
 
 ## Run
 
