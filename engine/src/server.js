@@ -6,7 +6,7 @@ const path = require('path');
 const http = require('http');
 const config = require('./config');
 const { send } = require('./http');
-const doors = [require('./doors/web'), require('./doors/meta'), require('./doors/telegram'), require('./admin')];
+const doors = [require('./doors/web'), require('./doors/meta'), require('./doors/telegram'), require('./doors/demo'), require('./admin')];
 
 const WIDGET_JS = fs.readFileSync(path.join(__dirname, '..', 'public', 'widget.js'));
 const PREVIEW = fs.readFileSync(path.join(__dirname, '..', 'public', 'preview.html'));
