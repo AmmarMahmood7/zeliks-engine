@@ -56,11 +56,14 @@ curl -X POST $BASE/admin/businesses/cafe-one/channels -H "Authorization: Bearer 
 `MODEL_BASE_URL` (OpenAI-compatible only), `ADMIN_TOKEN`, `PUBLIC_BASE_URL`,
 `META_VERIFY_TOKEN`, `META_APP_SECRET`, `TELEGRAM_WEBHOOK_SECRET`, `ALERT_TELEGRAM_BOT_TOKEN`.
 
-Demo door (all optional): `DEMO_ORIGINS` (sites allowed to call it, default `zeliks.tech,www.zeliks.tech`),
-`DEMO_STARTS_PER_HOUR` (per visitor, default 6), `DEMO_STARTS_TOTAL_PER_HOUR` (everyone, default 60),
-`DEMO_MESSAGES` (per demo, default 30), `DEMO_KEEP_DAYS` (default 7),
-`TRUST_PROXY_HOPS` (proxies in front of the engine that add to `X-Forwarded-For`; default 0 uses the socket address).
-The demo is off when `ADMIN_TOKEN` is not set, because it signs demo tokens with it.
+Demo door: `DEMO_SECRET` (required; signs demo tokens, the demo is off without it).
+Optional: `DEMO_ORIGINS` (sites allowed to call it, default `zeliks.tech,www.zeliks.tech`),
+`DEMO_ALLOW_LOCALHOST=1` (local development only), `DEMO_STARTS_PER_HOUR` (per visitor, default 6),
+`DEMO_STARTS_TOTAL_PER_HOUR` (everyone, default 60), `DEMO_MESSAGES` (per demo, default 30),
+`DEMO_MESSAGES_PER_DAY` (everyone, default 1000), `DEMO_KEEP_DAYS` (default 7),
+`TRUST_PROXY_HOPS` (proxies in front of the engine that add to `X-Forwarded-For`; default 0 uses the socket address,
+and the engine logs a warning if it sees `X-Forwarded-For` while this is 0).
+Limits are kept in memory, so they reset on restart and apply per container.
 
 ## Run
 
